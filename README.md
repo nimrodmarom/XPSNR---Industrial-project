@@ -1,6 +1,7 @@
-Docker__ffmpeg\ffmpeg:
-    A folder for the docker.
-PSNR_calculate.py:
+1. Docker__ffmpeg\ffmpeg:
+    A folder for the docker
+    
+2. PSNR_calculate.py:
     1. A script that runs on the folder of all the videos which contains the videos
     2. Assuming all the videos are in a folder name "videos"
     3. The video names are in format: 
