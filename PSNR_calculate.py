@@ -1,6 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 from PIL import Image
+import numpy as np
 
 def move_videos_to_folders():
     """ Move all videos to its folder. """
@@ -68,7 +69,6 @@ def handle_video(video_name: str):
             bit_rate_line = ""                
             found_first = False
             # copy result file to result_file_temp
-
             result_file_temp = result_file.readlines()
             for line in result_file_temp:
                 line = line.strip()
@@ -94,6 +94,8 @@ def handle_video(video_name: str):
             result.write("\nPSNR average: {0}".format(psnr_averge_value))
         last_index = result_name.index('.')
         new_result_name = result_name[0 : last_index] + '__{0}.txt'.format(bit_rate_value)
+        if (os.path.exists(new_result_name)):
+            os.remove(new_result_name)
         os.rename(result_name, new_result_name)
 
         os.chdir("..\\all_data")
@@ -127,10 +129,9 @@ def create_graph(video_name: str, different_codecs: str):
 
     directory_files.sort(key=lambda x: float(x.split('__')[-1].split('.')[0]))
 
-    a_x_AC4BF, a_y_AC4BF = [], []
-    b_x_AC4BF, b_y_AC4BF = [], []
-    c_x_AC4BF, c_y_AC4BF = [], []
-    title = "extention of x264 (natural)"
+    a_x, a_y = [], []
+    b_x, b_y = [], []
+    c_x, c_y = [], []
     for file in directory_files:
         file_attributes = file.split('__')
         if len(file_attributes) == 6:
@@ -148,14 +149,14 @@ def create_graph(video_name: str, different_codecs: str):
             x_value = float(x_value_line.split(': ')[-1])
             y_value = float( y_value_line.split(': ')[-1])
         if current_codec == all_codecs[0]:
-            a_x_AC4BF.append(x_value)
-            a_y_AC4BF.append(y_value)
+            a_x.append(x_value)
+            a_y.append(y_value)
         if len(all_codecs) >= 2 and current_codec == all_codecs[1]:
-            b_x_AC4BF.append(x_value)
-            b_y_AC4BF.append(y_value)
+            b_x.append(x_value)
+            b_y.append(y_value)
         if len(all_codecs) >= 3 and current_codec == all_codecs[2]:
-            c_x_AC4BF.append(x_value)
-            c_y_AC4BF.append(y_value)
+            c_x.append(x_value)
+            c_y.append(y_value)
     
     plt.figure()
 
@@ -164,14 +165,22 @@ def create_graph(video_name: str, different_codecs: str):
     plt.ylabel('PSNR value')
 
     if len(all_codecs) >= 1:
-        plt.plot(a_x_AC4BF, a_y_AC4BF, label = "{0}".format(all_codecs[0]), color='green', linestyle='solid' , linewidth = 3,
+        plt.plot(a_x, a_y, label = "{0} (base line)".format(all_codecs[0]), color='green', linestyle='solid' , linewidth = 3,
              marker='o', markerfacecolor='red', markersize=6)
+        
     if len(all_codecs) >= 2:
-        plt.plot(b_x_AC4BF, b_y_AC4BF, label = "{0}".format(all_codecs[1]), color='blue', linestyle='solid', linewidth = 3,
+        bd_rate = calculate_BD_rate(a_x, a_y, b_x, b_y)
+        bd_rate = round(bd_rate, 3)
+        plt.plot(b_x, b_y, label = "{0} BD-rate: {1}".format(all_codecs[1], bd_rate), color='blue', linestyle='solid', linewidth = 3,
             marker='o', markerfacecolor='red', markersize=6)
+        
     if len(all_codecs) >= 3:
-        plt.plot(c_x_AC4BF, c_y_AC4BF, label = "{0}".format(all_codecs[2]), color='yellow', linestyle='solid', linewidth = 3,
+        bd_rate = calculate_BD_rate(a_x, a_y, c_x, c_y)
+        bd_rate = round(bd_rate, 3)
+
+        plt.plot(c_x, c_y, label = "{0} BD-rate: {1}".format(all_codecs[2], bd_rate), color='yellow', linestyle='solid', linewidth = 3,
              marker='o', markerfacecolor='red', markersize=6)
+    
     if len(all_codecs) != 0:
         plt.legend(title="{0}".format(legend_title))
     #  plt.show()
@@ -181,6 +190,33 @@ def create_graph(video_name: str, different_codecs: str):
 
     os.chdir('..')
 
+
+def calculate_BD_rate(R1, PSNR1, R2, PSNR2):
+    lR1 = np.log(R1)
+    lR2 = np.log(R2)
+
+    # rate method: sames as previous one but with inverse order
+    p1 = np.polyfit(PSNR1, lR1, 3)
+    p2 = np.polyfit(PSNR2, lR2, 3)
+
+    # integration interval
+    min_int = max(min(PSNR1), min(PSNR2))
+    max_int = min(max(PSNR1), max(PSNR2))
+
+    # indefinite interval of both polynomial curves
+    p_int1 = np.polyint(p1)
+    p_int2 = np.polyint(p2)
+
+    # evaluates both poly curves at the limits of the integration interval
+    # to find the area
+    int1 = np.polyval(p_int1, max_int) - np.polyval(p_int1, min_int)
+    int2 = np.polyval(p_int2, max_int) - np.polyval(p_int2, min_int)
+
+    # find avg diff between the areas to obtain the final measure
+    avg_exp_diff = (int2-int1)/(max_int-min_int)
+    avg_diff = (np.exp(avg_exp_diff)-1)*100
+
+    return avg_diff
 
 
 def main():
