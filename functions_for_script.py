@@ -108,3 +108,44 @@ def calculate_BD_rate(R1, PSNR1, R2, PSNR2):
     avg_diff = (np.exp(avg_exp_diff)-1)*100
 
     return avg_diff
+
+def deleteAllPngsAndAllMp4s():
+    for folder in os.listdir():
+        # check if folder is a folder
+        if not os.path.isdir(folder):
+            continue
+        os.chdir(folder)
+        files = os.listdir()
+        for file in files:
+            if os.path.isdir(file) and (file == 'results' or file == 'all_data'):
+                os.chdir(file)
+                for file2 in os.listdir():
+                    os.remove(file2)
+                os.chdir('..')
+                os.rmdir(file)
+            if file.endswith('.mp4') and not len(file.split('__')) == 6:
+                os.remove(file)
+            if file.endswith('.png'):
+                os.remove(file)
+        os.chdir('..')
+
+def convertVideosToY4M():
+    for folder in os.listdir():
+        # check if folder is a folder
+        if not os.path.isdir(folder):
+            continue
+        os.chdir(folder)
+        if not os.path.exists('y4m_videos'):
+            os.mkdir('y4m_videos')
+        else:
+            files = os.listdir('y4m_videos')
+            os.chdir('y4m_videos')
+            for file in files:
+                os.remove(file)
+            os.chdir('..')
+        files = os.listdir()
+        for file in files:
+            if file.endswith('mp4') or file.endswith('avi'):
+                new_video_name = file.split('.')[0] + '.y4m'
+                os.system("ffmpeg -y -i {0} y4m_videos\\{1}".format(file, new_video_name))
+        os.chdir('..')

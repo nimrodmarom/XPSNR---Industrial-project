@@ -6,7 +6,6 @@ from functions_for_script import *
 def handle_video(video_name: str):
     """ Create for a video_name 2 folders - all_data and results """
     os.chdir("{0}".format(video_name)) 
-    print(os.getcwd()) #TODO: Delete - helps for debugging
 
     if not os.path.exists('all_data_psnr'):
         os.mkdir('all_data_psnr')
@@ -251,9 +250,11 @@ def create_graph(video_name: str, different_codecs: str):
 
 def main():
     os.chdir("..\\videos")
-    # move_videos_to_folders()
+    #move_videos_to_folders()c
+    convertVideosToY4M()
     # count_videos()
-    
+    #deleteAllPngsAndAllMp4s()
+
     ''' Produce the database: in each video folder'''
     # for folder_name in os.listdir():
     #     if not os.path.isdir(folder_name):
@@ -262,45 +263,45 @@ def main():
     #     handle_video(folder_name)
 
     ''' Produce the graphs for each video: '''
-    for folder_name in os.listdir():
-        if not os.path.isdir(folder_name):
-            continue
-        files_in_folder = os.listdir(folder_name)
-        codec = ''
-        different_codecs = False
-        for video_name in files_in_folder: # check if all codecs are the same
-            if not (video_name.endswith('.mp4') or video_name.endswith('.avi')):
-                continue
-            if len(video_name.split('__')) == 6:
-                continue
-            current_codec = video_name.split('__')[6]
-            if codec == '':
-                codec = current_codec
-            else:
-                if current_codec != codec:
-                    different_codecs = True
-                    break
+    # for folder_name in os.listdir():
+    #     if not os.path.isdir(folder_name):
+    #         continue
+    #     files_in_folder = os.listdir(folder_name)
+    #     codec = ''
+    #     different_codecs = False
+    #     for video_name in files_in_folder: # check if all codecs are the same
+    #         if not (video_name.endswith('.mp4') or video_name.endswith('.avi')):
+    #             continue
+    #         if len(video_name.split('__')) == 6:
+    #             continue
+    #         current_codec = video_name.split('__')[6]
+    #         if codec == '':
+    #             codec = current_codec
+    #         else:
+    #             if current_codec != codec:
+    #                 different_codecs = True
+    #                 break
 
-        create_graph(folder_name, different_codecs)
+    #     create_graph(folder_name, different_codecs)
         
 
     
     """ Produce the graphs for all videos to one PDF file: """
-    image_lst = []
-    for folder_name in os.listdir():
-        if not os.path.isdir(folder_name):
-            continue
-        os.chdir(folder_name)
-        for file in os.listdir():
-            if file.endswith('.png'):
-                png = Image.open(file)
-                png.load()
-                background = Image.new("RGB", png.size, (255, 255, 255))
-                background.paste(png, mask=png.split()[3])
-                image_lst.append(background)
-        os.chdir("..")  
-    pdf_path = os.getcwd() + '\\' + 'report.pdf'
-    image_lst[0].save(pdf_path, "PDF", resoultion = 100.0, save_all=True, append_images=image_lst[1:])
+    # image_lst = []
+    # for folder_name in os.listdir():
+    #     if not os.path.isdir(folder_name):
+    #         continue
+    #     os.chdir(folder_name)
+    #     for file in os.listdir():
+    #         if file.endswith('.png'):
+    #             png = Image.open(file)
+    #             png.load()
+    #             background = Image.new("RGB", png.size, (255, 255, 255))
+    #             background.paste(png, mask=png.split()[3])
+    #             image_lst.append(background)
+    #     os.chdir("..")  
+    # pdf_path = os.getcwd() + '\\' + 'report.pdf'
+    # image_lst[0].save(pdf_path, "PDF", resoultion = 100.0, save_all=True, append_images=image_lst[1:])
 
 if __name__ == "__main__":
     main()
