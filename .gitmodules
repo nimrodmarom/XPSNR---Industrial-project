@@ -1,3 +1,6 @@
 [submodule "Docker_ffmpeg/ffmpeg"]
 	path = Docker_ffmpeg/ffmpeg
 	url = https://github.com/nimrodmarom/forked_ffmpeg.git
+[submodule "fraunhofer_xpsnr"]
+	path = fraunhofer_xpsnr
+	url = https://github.com/ran0102/forked_fraunhofer_xpsnr.git
