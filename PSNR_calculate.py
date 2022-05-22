@@ -1,7 +1,94 @@
+from fileinput import filename
 import os
+import csv
+from tracemalloc import start
 import matplotlib.pyplot as plt
 from PIL import Image
 from functions_for_script import *
+import datetime as dt
+
+def calculate_full_profiling_average(type):
+    folder = 'results_' + type
+    os.chdir(folder)
+    os.chdir('profiling')
+    average = 0
+    # average of all the the value at the end of the line in the csv file
+    with open('Full_' + type + '_profiling.csv', 'r') as csvfile:
+        reader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+        average = 0
+        for row in reader:
+            average += float(row[-1].split(',')[-1].strip())
+        average /= len(list(reader))
+    with open('Full_' + type + '_profiling.csv', 'a') as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+        writer.writerow(['Average', average])
+
+    os.chdir('..\\..')
+
+def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
+    if not os.path.exists('results_xpsnr'):
+            os.mkdir('results_xpsnr')
+    os.chdir('results_xpsnr')
+    if not os.path.exists('profiling'):
+            os.mkdir('profiling')
+    os.chdir('profiling')
+    print(os.getcwd())
+    with open('Full_XPSNR_profiling.csv', 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+        start_time = dt.datetime.now()
+        # make start time this format HH:MM::SEC
+
+        os.chdir('..\\..')
+        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:2_xpsnr -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -lavfi xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_xpsnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
+        os.chdir('results_xpsnr\\profiling')
+        end_time = dt.datetime.now()
+        diff = str(end_time - start_time)
+        diff = float(diff.split(':')[0]) * 3600 + float(diff.split(':')[1]) * 60 + float(diff.split(':')[2])
+        writer.writerow(['start psnr calculate', start_time, 'end psnr calculate:', end_time, 'different(seconds)', diff])
+
+    os.chdir('..\\..')
+    if not os.path.exists('results_psnr'):
+            os.mkdir('results_psnr')
+    os.chdir('results_psnr')
+    if not os.path.exists('profiling'):
+            os.mkdir('profiling')
+    os.chdir('profiling')
+    with open('Full_PSNR_profiling.csv', 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+        start_time = dt.datetime.now()
+        os.chdir('..\\..')
+        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:2_xpsnr -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -lavfi psnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_psnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
+        os.chdir('results_psnr\\profiling')
+        end_time = dt.datetime.now()
+        diff = str(end_time - start_time)
+        diff = float(diff.split(':')[0]) * 3600 + float(diff.split(':')[1]) * 60 + float(diff.split(':')[2])
+        writer.writerow(['start psnr calculate', start_time, 'end psnr calculate:', end_time, 'different(seconds)', diff])
+    os.chdir('..\\..')
+
+def clear_csv_files():
+    if not os.path.exists('results_psnr'):
+        return 
+    os.chdir('results_psnr')
+    if not os.path.exists('profiling'):
+        return
+    os.chdir('profiling')
+    # check if Full_PSNR_profiling.csv exists
+    if os.path.exists('Full_PSNR_profiling.csv'):
+        os.remove('Full_PSNR_profiling.csv')
+    
+    os.chdir('..\\..')
+    if not os.path.exists('results_xpsnr'):
+        return 
+    os.chdir('results_xpsnr')
+    if not os.path.exists('profiling'):
+        return
+    os.chdir('profiling')
+    # check if Full_PSNR_profiling.csv exists
+    if os.path.exists('Full_XPSNR_profiling.csv'):
+        os.remove('Full_XPSNR_profiling.csv')
+    os.chdir('..\\..')
+
+    
 
 def handle_video(video_name: str):
     """ Create for a video_name 2 folders - all_data and results """
@@ -34,16 +121,41 @@ def handle_video(video_name: str):
         os.chdir("..")
         return
     current_folder = os.getcwd()
+    clear_csv_files()
     for file in directory_files:
         # make directory all_data
         all_data_name = 'all_data_' + file.split('.')[0] + '.txt'
         result_name = 'results_' + file.split('.')[0] + '.txt'
-        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -lavfi psnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_psnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
-        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -lavfi xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_xpsnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
+
+        call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name)
+        
         os.chdir("results_psnr")
         # change psnr files
         psnr_averge_value = 0
         bit_rate_value = 0
+        profiling_file = 'profiling_' + result_name.split('results_')[1]
+        if not os.path.exists('profiling'):
+            os.mkdir('profiling')
+        file_content = []
+        with open(result_name, 'r') as result_file:
+            # check if lines starts with '******'
+            results_lines = result_file.readlines()
+            os.chdir('profiling')
+            with open(profiling_file, 'w') as profiling:
+                        profiling.truncate()
+            os.chdir('..')
+            for line in results_lines:
+                if line.startswith('\n******') or line.startswith('******'):
+                    os.chdir('profiling')
+                    with open(profiling_file, 'a') as profiling:
+                        profiling.write(line)
+                    os.chdir('..')
+                else:
+                    file_content.append(line)  
+        with open(result_name, 'w') as result_file:
+            result_file.truncate()
+            for line in file_content:
+                result_file.write(line)
         with open(result_name, 'r') as result_file:
             # find the 2nd line which start with word "Duration"
             bit_rate_line = ""                
@@ -82,6 +194,29 @@ def handle_video(video_name: str):
         os.chdir("..\\results_xpsnr")
         xpsnr_averge_value = 0
         bit_rate_value = 0
+        profiling_file = 'profiling_' + result_name.split('results_')[1]
+        if not os.path.exists('profiling'):
+            os.mkdir('profiling')
+        file_content = []
+        with open(result_name, 'r') as result_file:
+            # check if lines starts with '******'
+            results_lines = result_file.readlines()
+            os.chdir('profiling')
+            with open(profiling_file, 'w') as profiling:
+                        profiling.truncate()
+            os.chdir('..')
+            for line in results_lines:
+                if line.startswith('\n******') or line.startswith('******'):
+                    os.chdir('profiling')
+                    with open(profiling_file, 'a') as profiling:
+                        profiling.write(line)
+                    os.chdir('..')
+                else:
+                    file_content.append(line)  
+        with open(result_name, 'w') as result_file:
+            result_file.truncate()
+            for line in file_content:
+                result_file.write(line)
         with open(result_name, 'r') as result_file:
             # find the 2nd line which start with word "Duration"
             bit_rate_line = ""                
@@ -114,7 +249,8 @@ def handle_video(video_name: str):
         os.rename(result_name, new_result_name)  
 
         os.chdir("..")
-
+    calculate_full_profiling_average('XPSNR')
+    calculate_full_profiling_average('PSNR')
     os.chdir("..")
 
 def create_graph(video_name: str, different_codecs: str):
@@ -246,62 +382,65 @@ def create_graph(video_name: str, different_codecs: str):
 
     os.chdir('..')
 
+def produce_database():
+    for folder_name in os.listdir():
+        if not os.path.isdir(folder_name):
+            continue
 
+        handle_video(folder_name)
+
+def produce_graphs():
+    for folder_name in os.listdir():
+        if not os.path.isdir(folder_name):
+            continue
+        files_in_folder = os.listdir(folder_name)
+        codec = ''
+        different_codecs = False
+        for video_name in files_in_folder: # check if all codecs are the same
+            if not (video_name.endswith('.mp4') or video_name.endswith('.avi')):
+                continue
+            if len(video_name.split('__')) == 6:
+                continue
+            current_codec = video_name.split('__')[6]
+            if codec == '':
+                codec = current_codec
+            else:
+                if current_codec != codec:
+                    different_codecs = True
+                    break
+
+        create_graph(folder_name, different_codecs)
+    
+    produce_PDF()
+
+def produce_PDF():
+    image_lst = []
+    for folder_name in os.listdir():
+        if not os.path.isdir(folder_name):
+            continue
+        os.chdir(folder_name)
+        for file in os.listdir():
+            if file.endswith('.png'):
+                png = Image.open(file)
+                png.load()
+                background = Image.new("RGB", png.size, (255, 255, 255))
+                background.paste(png, mask=png.split()[3])
+                image_lst.append(background)
+        os.chdir("..")  
+    pdf_path = os.getcwd() + '\\' + 'report.pdf'
+    image_lst[0].save(pdf_path, "PDF", resoultion = 100.0, save_all=True, append_images=image_lst[1:])
 
 def main():
     os.chdir("..\\videos")
     #move_videos_to_folders()c
-    convertVideosToY4M()
+    # convertVideosToY4M() //TODO: not all videos are converted. should be run again
     # count_videos()
     #deleteAllPngsAndAllMp4s()
 
-    ''' Produce the database: in each video folder'''
-    # for folder_name in os.listdir():
-    #     if not os.path.isdir(folder_name):
-    #         continue
-
-    #     handle_video(folder_name)
-
-    ''' Produce the graphs for each video: '''
-    # for folder_name in os.listdir():
-    #     if not os.path.isdir(folder_name):
-    #         continue
-    #     files_in_folder = os.listdir(folder_name)
-    #     codec = ''
-    #     different_codecs = False
-    #     for video_name in files_in_folder: # check if all codecs are the same
-    #         if not (video_name.endswith('.mp4') or video_name.endswith('.avi')):
-    #             continue
-    #         if len(video_name.split('__')) == 6:
-    #             continue
-    #         current_codec = video_name.split('__')[6]
-    #         if codec == '':
-    #             codec = current_codec
-    #         else:
-    #             if current_codec != codec:
-    #                 different_codecs = True
-    #                 break
-
-    #     create_graph(folder_name, different_codecs)
-        
-
+    produce_database()
     
-    """ Produce the graphs for all videos to one PDF file: """
-    # image_lst = []
-    # for folder_name in os.listdir():
-    #     if not os.path.isdir(folder_name):
-    #         continue
-    #     os.chdir(folder_name)
-    #     for file in os.listdir():
-    #         if file.endswith('.png'):
-    #             png = Image.open(file)
-    #             png.load()
-    #             background = Image.new("RGB", png.size, (255, 255, 255))
-    #             background.paste(png, mask=png.split()[3])
-    #             image_lst.append(background)
-    #     os.chdir("..")  
-    # pdf_path = os.getcwd() + '\\' + 'report.pdf'
-    # image_lst[0].save(pdf_path, "PDF", resoultion = 100.0, save_all=True, append_images=image_lst[1:])
+    # produce_graphs()        
+
 
 if __name__ == "__main__":
     main()
