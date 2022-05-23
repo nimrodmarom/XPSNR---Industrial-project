@@ -31,7 +31,7 @@ def profiling_functions(type):
             with open('functions_profiling.csv', 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
                 # write row of the keys from function_dict
-                writer.writerow([file] + [[key] + [function_dict[key][0] / function_dict[key][1]] for key in function_dict])                         
+                writer.writerow([file] + [[key] + [function_dict[key][0] / function_dict[key][1]] + ['counter'] + [function_dict[key][1]] for key in function_dict])                         
     os.remove(file)
     os.chdir('..\\..')
 

@@ -125,7 +125,7 @@ if __name__ == "__main__":
     resolution = (int(resolution[0]), int(resolution[1]))
     # video: name__resolution__subSampling__pixelDepth__framePerSecond__totalFrames__bitRate
     # get frames from original_video
-    frames = int(original_video.split('__')[5])
+    frames = int(encoded_video.split('__')[5])
     # get original_bitdepth from original_video
     original_bitdepth = int(original_video.split('__')[3])
     # get encoded_bitdepth from encoded_video

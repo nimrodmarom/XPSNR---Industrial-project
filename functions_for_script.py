@@ -36,21 +36,25 @@ def calculate_average_of_all_frames(file_name) -> float:
     avg_sum = 0
     with open(file_name, "r") as f:
         lines = f.readlines()
-        for line in lines:
+        line = lines[-1]
+        Y_value = float(line.split(": ")[2].split(" ")[0])
+        U_value = float(line.split(": ")[3].split(" ")[0])
+        V_value = float(line.split(": ")[4].split(" ")[0].strip())
+        #for line in lines:
             # skip last line
-            if count == len(lines) - 2:
-                break
+        #    if count == len(lines) - 2:
+        #        break
             # make line to dictionary by key (": ") value
-            if len(line.split(": ")) >=2:
-                Y_value = float(line.split(": ")[2].split(" ")[0])
-                U_value = float(line.split(": ")[3].split(" ")[0])
-                V_value = float(line.split(": ")[4].split(" ")[0].strip())
+            # if len(line.split(": ")) >=2:
+            #     Y_value = float(line.split(": ")[2].split(" ")[0])
+            #     U_value = float(line.split(": ")[3].split(" ")[0])
+            #     V_value = float(line.split(": ")[4].split(" ")[0].strip())
                 
-                avg_frame = (Y_value + U_value + V_value) / 3
-                count += 1
-                avg_sum += avg_frame
+            #     avg_frame = (Y_value + U_value + V_value) / 3
+            #     count += 1
+            #     avg_sum += avg_frame
     os.chdir("..\\results_xpsnr")
-    return avg_sum/count
+    return (4*Y_value + U_value + V_value)/6
 
 def calculate_avg_by_folder(video_name):
     print (os.getcwd())
