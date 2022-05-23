@@ -37,9 +37,9 @@ def calculate_average_of_all_frames(file_name) -> float:
     with open(file_name, "r") as f:
         lines = f.readlines()
         line = lines[-1]
-        Y_value = float(line.split(": ")[2].split(" ")[0])
-        U_value = float(line.split(": ")[3].split(" ")[0])
-        V_value = float(line.split(": ")[4].split(" ")[0].strip())
+        Y_value = float(line.split(": ")[1].split(" ")[0])
+        U_value = float(line.split(": ")[2].split(" ")[0])
+        V_value = float(line.split(": ")[3].split(" ")[0].strip())
         #for line in lines:
             # skip last line
         #    if count == len(lines) - 2:
