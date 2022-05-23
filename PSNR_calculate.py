@@ -6,6 +6,34 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from functions_for_script import *
 import datetime as dt
+import typing
+
+def profiling_functions(type):
+    os.chdir(f'results_{type}\\profiling')
+    # delete csv file if exists
+    if os.path.exists('functions_profiling.csv'):
+        os.remove('functions_profiling.csv')
+    for file in os.listdir():
+        function_dict = {}
+        if file.endswith(".txt"):
+            with open(file, 'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    line_split = line.split(': ')
+                    key = line_split[0].split('******')[1]
+                    data = line_split[2].split(' ')[0]
+                    # data_t is a tupple of (data, count), count ++ if the key is already in the dictionary
+                    data_t = function_dict.get(key)
+                    if data_t is None:
+                        function_dict[key] = (float(data), 1)
+                    else:
+                        function_dict[key] = (data_t[0] + float(data), data_t[1] + 1)
+            with open('functions_profiling.csv', 'a', newline='') as csvfile:
+                writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+                # write row of the keys from function_dict
+                writer.writerow([file] + [[key] + [function_dict[key][0] / function_dict[key][1]] for key in function_dict])                         
+    os.remove(file)
+    os.chdir('..\\..')
 
 def calculate_full_profiling_average(type):
     folder = 'results_' + type
@@ -14,11 +42,12 @@ def calculate_full_profiling_average(type):
     average = 0
     # average of all the the value at the end of the line in the csv file
     with open('Full_' + type + '_profiling.csv', 'r') as csvfile:
-        reader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+        reader = csv.reader(csvfile)
         average = 0
-        for row in reader:
-            average += float(row[-1].split(',')[-1].strip())
-        average /= len(list(reader))
+        rows = list(reader)
+        for row in rows:
+            average += float(row[-1])
+        average /= len(rows)
     with open('Full_' + type + '_profiling.csv', 'a') as csvfile:
         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
         writer.writerow(['Average', average])
@@ -70,6 +99,7 @@ def clear_csv_files():
         return 
     os.chdir('results_psnr')
     if not os.path.exists('profiling'):
+        os.chdir('..')
         return
     os.chdir('profiling')
     # check if Full_PSNR_profiling.csv exists
@@ -81,6 +111,7 @@ def clear_csv_files():
         return 
     os.chdir('results_xpsnr')
     if not os.path.exists('profiling'):
+        os.chdir('..')
         return
     os.chdir('profiling')
     # check if Full_PSNR_profiling.csv exists
@@ -88,7 +119,11 @@ def clear_csv_files():
         os.remove('Full_XPSNR_profiling.csv')
     os.chdir('..\\..')
 
-    
+def handle_profiling():
+    calculate_full_profiling_average('XPSNR')
+    calculate_full_profiling_average('PSNR')
+    profiling_functions('PSNR')
+    profiling_functions('XPSNR')
 
 def handle_video(video_name: str):
     """ Create for a video_name 2 folders - all_data and results """
@@ -145,12 +180,12 @@ def handle_video(video_name: str):
                         profiling.truncate()
             os.chdir('..')
             for line in results_lines:
-                if line.startswith('\n******') or line.startswith('******'):
+                if line.endswith('******\n') or line.endswith('******'):
                     os.chdir('profiling')
                     with open(profiling_file, 'a') as profiling:
                         profiling.write(line)
                     os.chdir('..')
-                else:
+                elif not line.strip().startswith('Last message repeated'):
                     file_content.append(line)  
         with open(result_name, 'w') as result_file:
             result_file.truncate()
@@ -198,6 +233,7 @@ def handle_video(video_name: str):
         if not os.path.exists('profiling'):
             os.mkdir('profiling')
         file_content = []
+        print(os.getcwd())
         with open(result_name, 'r') as result_file:
             # check if lines starts with '******'
             results_lines = result_file.readlines()
@@ -205,13 +241,15 @@ def handle_video(video_name: str):
             with open(profiling_file, 'w') as profiling:
                         profiling.truncate()
             os.chdir('..')
+            print(os.getcwd())
+
             for line in results_lines:
-                if line.startswith('\n******') or line.startswith('******'):
+                if line.endswith('******\n') or line.endswith('******'):
                     os.chdir('profiling')
                     with open(profiling_file, 'a') as profiling:
                         profiling.write(line)
                     os.chdir('..')
-                else:
+                elif not line.strip().startswith('Last message repeated'):
                     file_content.append(line)  
         with open(result_name, 'w') as result_file:
             result_file.truncate()
@@ -249,8 +287,7 @@ def handle_video(video_name: str):
         os.rename(result_name, new_result_name)  
 
         os.chdir("..")
-    calculate_full_profiling_average('XPSNR')
-    calculate_full_profiling_average('PSNR')
+    handle_profiling()
     os.chdir("..")
 
 def create_graph(video_name: str, different_codecs: str):
@@ -277,7 +314,10 @@ def create_graph(video_name: str, different_codecs: str):
                 all_codecs.append(file.split('__')[7])
                 legend_title = file.split('__')[6]
     directory_files = os.listdir()
-
+    # remove folders from directory_files
+    for file in directory_files:
+        if os.path.isdir(file):
+            directory_files.remove(file)
     directory_files.sort(key=lambda x: float(x.split('__')[-1].split('.')[0]))
 
     a_x, a_y = [], []
@@ -311,6 +351,10 @@ def create_graph(video_name: str, different_codecs: str):
     
     os.chdir ("..\\results_xpsnr")
     directory_files = os.listdir()
+    # remove folders from directory_files
+    for file in directory_files:
+        if os.path.isdir(file):
+            directory_files.remove(file)
     directory_files.sort(key=lambda x: float(x.split('__')[-1].split('.')[0]))
     a_x_XPSNR, a_y_XPSNR = [], []
     b_x_XPSNR, b_y_XPSNR = [], []
@@ -435,11 +479,10 @@ def main():
     #move_videos_to_folders()c
     # convertVideosToY4M() //TODO: not all videos are converted. should be run again
     # count_videos()
-    #deleteAllPngsAndAllMp4s()
 
     produce_database()
     
-    # produce_graphs()        
+    # nproduce_graphs()        
 
 
 if __name__ == "__main__":
