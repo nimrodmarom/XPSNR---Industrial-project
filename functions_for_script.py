@@ -90,15 +90,15 @@ def calculate_BD_rate(R1, PSNR1, R2, PSNR2):
     lR1 = np.log(R1)
     lR2 = np.log(R2)
 
-    # rate method: sames as previous one but with inverse order
-    p1 = np.polyfit(PSNR1, lR1, 3)
-    p2 = np.polyfit(PSNR2, lR2, 3)
+     # least squares polynomial fit
+    p1 = np.polyfit(lR1, PSNR1, 3)
+    p2 = np.polyfit(lR2, PSNR2, 3)
 
     # integration interval
-    min_int = max(min(PSNR1), min(PSNR2))
-    max_int = min(max(PSNR1), max(PSNR2))
+    min_int = max(min(lR1), min(lR2))
+    max_int = min(max(lR1), max(lR2))
 
-    # indefinite interval of both polynomial curves
+    # indefinite integral of both polynomial curves
     p_int1 = np.polyint(p1)
     p_int2 = np.polyint(p2)
 
@@ -108,8 +108,7 @@ def calculate_BD_rate(R1, PSNR1, R2, PSNR2):
     int2 = np.polyval(p_int2, max_int) - np.polyval(p_int2, min_int)
 
     # find avg diff between the areas to obtain the final measure
-    avg_exp_diff = (int2-int1)/(max_int-min_int)
-    avg_diff = (np.exp(avg_exp_diff)-1)*100
+    avg_diff = (int2-int1)/(max_int-min_int)
 
     return avg_diff
 

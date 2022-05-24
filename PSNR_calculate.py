@@ -32,7 +32,7 @@ def profiling_functions(type):
                 writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
                 # write row of the keys from function_dict
                 writer.writerow([file] + [[key] + [function_dict[key][0] / function_dict[key][1]] + ['counter'] + [function_dict[key][1]] for key in function_dict])                         
-        os.remove(file)
+            os.remove(file)
     os.chdir('..\\..')
 
 def calculate_full_profiling_average(type):
@@ -480,9 +480,9 @@ def main():
     # convertVideosToY4M() //TODO: not all videos are converted. should be run again
     # count_videos()
 
-    produce_database()
+    # produce_database()
     
-    # nproduce_graphs()        
+    produce_graphs()        
 
 
 if __name__ == "__main__":
