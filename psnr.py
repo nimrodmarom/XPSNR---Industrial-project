@@ -33,7 +33,7 @@ class VideoCaptureYUV(object):
         elif self.bitdepth == 10:
             raw = self.file.read(2 * channel_len)  # Read 2 bytes for every pixel
             channel = np.frombuffer(raw, dtype=np.uint16)
-        
+
         channel = channel.reshape(shape)
 
         return channel
@@ -42,14 +42,13 @@ class VideoCaptureYUV(object):
         self.file.close()
 
 
-def psnr_channel(original, encoded, resolution : tuple, bitdepth):
+def psnr_channel(original, encoded, resolution : tuple, MAX_VALUE : int):
     # Convert frames to double
     original = np.array(original, dtype=np.double)
     encoded = np.array(encoded, dtype=np.double)
 
     # Calculate mean squared error
     mse = 1 / (resolution[0] * resolution[1]) * np.mean((original - encoded) ** 2)
-    MAX_VALUE  = bitdepth ** 2
     # PSNR in dB
     psnr = 10 * np.log10((MAX_VALUE * MAX_VALUE) / mse)
     return psnr, mse
@@ -58,6 +57,8 @@ def psnr_channel(original, encoded, resolution : tuple, bitdepth):
 def calculate_psnr(original, encoded, resolution, frames, original_bitdepth, encoded_bitdepth):
     original_video = VideoCaptureYUV(original, resolution, original_bitdepth)
     encoded_video = VideoCaptureYUV(encoded, resolution, encoded_bitdepth)
+    
+    MAX_VALUE  = original_bitdepth ** 2
 
     psnr_y_array = list()
     psnr_u_array = list()
@@ -68,16 +69,16 @@ def calculate_psnr(original, encoded, resolution, frames, original_bitdepth, enc
         original_y, original_u, original_v = original_video.read_frame()
         encoded_y, encoded_u, encoded_v = encoded_video.read_frame()
 
-        psnr_y, mse_y = psnr_channel(original_y, encoded_y, resolution, original_bitdepth)
+        psnr_y, mse_y = psnr_channel(original_y, encoded_y, resolution, MAX_VALUE)
         psnr_y_array.append(psnr_y)
 
-        psnr_u, mse_u = psnr_channel(original_u, encoded_u)
+        psnr_u, mse_u = psnr_channel(original_u, encoded_u, resolution, MAX_VALUE)
         psnr_u_array.append(psnr_u)
 
-        psnr_v, mse_v = psnr_channel(original_v, encoded_v)
+        psnr_v, mse_v = psnr_channel(original_v, encoded_v, resolution, MAX_VALUE)
         psnr_v_array.append(psnr_v)
 
-        mse = (4 * mse_y + mse_u + mse_v) / 6  # Weighted MSE
+        mse = (mse_y + mse_u + mse_v) / 3  # Weighted MSE
         mse_array.append(mse)
 
     # Close YUV streams
@@ -114,22 +115,21 @@ def delete_converted_videos(original_video, encoded_video):
     os.remove(yuv_encoded_video)
 
 if __name__ == "__main__":
-    os.chdir('..\\videos\\AC4BF')
-    original_video = 'AC4BF__1920x1080__420__8__60__300.mp4'
-    encoded_video = 'AC4BF__1920x1080__420__8__60__300__aom__ll_gaming__500.avi'
+    os.chdir('..\\videos\\BarScene_p30')
+    original_video = 'BarScene_p30__1920x1080__420__8__30__300.mp4'
+    encoded_video = 'BarScene_p30__1920x1080__420__8__30__300__x264__hq_slow_natural__500.avi'
     covert_videos_to_yuv(original_video, encoded_video)
+    original_video = 'BarScene_p30__1920x1080__420__8__30__300.yuv'
+    encoded_video = 'BarScene_p30__1920x1080__420__8__30__300__x264__hq_slow_natural__500.yuv'
 
     # get resoluition from original_video
-    # resultion is like axb
+    # resultion is like axb.
     resolution = original_video.split('__')[1].split('x')
     resolution = (int(resolution[0]), int(resolution[1]))
-    # video: name__resolution__subSampling__pixelDepth__framePerSecond__totalFrames__bitRate
-    # get frames from original_video
     frames = int(encoded_video.split('__')[5])
-    # get original_bitdepth from original_video
     original_bitdepth = int(original_video.split('__')[3])
-    # get encoded_bitdepth from encoded_video
     encoded_bitdepth = int(encoded_video.split('__')[3])
+
 
     psnr_y, pnsr_u, psnr_v, psnr_yuv = calculate_psnr(
         original_video, encoded_video, resolution, 
@@ -141,4 +141,4 @@ if __name__ == "__main__":
     print(f'V-PSNR: {psnr_v:.4f}dB')
     print(f'YUV-PSNR: {psnr_yuv:.4f}dB')
 
-    delete_converted_videos(original_video, encoded_video)
+    #delete_converted_videos(original_video, encoded_video)

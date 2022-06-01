@@ -3,6 +3,7 @@ import os
 import csv
 from tracemalloc import start
 import matplotlib.pyplot as plt
+import numpy as np
 from PIL import Image
 from functions_for_script import *
 import datetime as dt
@@ -82,6 +83,7 @@ def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
     if not os.path.exists('profiling'):
             os.mkdir('profiling')
     os.chdir('profiling')
+    print(os.getcwd())
     with open('Full_PSNR_profiling.csv', 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
         start_time = dt.datetime.now()
@@ -125,10 +127,80 @@ def handle_profiling():
     profiling_functions('PSNR')
     profiling_functions('XPSNR')
 
-def handle_video(video_name: str):
-    """ Create for a video_name 2 folders - all_data and results """
-    os.chdir("{0}".format(video_name)) 
+def calculate_XPSNR_PSNR_files(VQM_type: str, result_name: str, all_data_name: str):
+    
+    os.chdir('results_' + VQM_type)
+    averge_value = 0
+    bit_rate_value = 0
+    profiling_file = 'profiling_' + result_name.split('results_')[1]
+    if not os.path.exists('profiling'):
+        os.mkdir('profiling')
+    file_content = []
+    #print(os.getcwd())
+    with open(result_name, 'r') as result_file:
+        # check if lines starts with '******'
+        results_lines = result_file.readlines()
+        os.chdir('profiling')
+        with open(profiling_file, 'w') as profiling:
+                    profiling.truncate()
+        profiling_lines = []
+        for line in results_lines:
+            if line.endswith('******\n') or line.endswith('******'):
+                profiling_lines.append(line)
+            elif not line.strip().startswith('Last message repeated'):
+                file_content.append(line)  
+        with open(profiling_file, 'w') as profiling:
+            for line in profiling_lines:
+                profiling.write(line)
 
+        os.chdir('..')
+
+    with open(result_name, 'w') as result_file:
+        result_file.truncate()
+        for line in file_content:
+            result_file.write(line)
+    with open(result_name, 'r') as result_file:
+        # find the 2nd line which start with word "Duration"
+        bit_rate_line = ""                
+        found_first = False
+        # copy result file to result_file_temp
+        result_file_lines = result_file.readlines()
+        for line in result_file_lines:
+            line = line.strip()
+            if line.startswith("Duration"):
+                if found_first:
+                    bit_rate_line = line
+                    break
+                else:
+                    found_first = True
+        
+        if (VQM_type == 'xpsnr'):
+            averge_value = calculate_average_of_all_frames(file_name=all_data_name)
+        else: 
+            assert(VQM_type == 'psnr')
+            last_line = result_file_lines[-1].split(' ')
+            for i in range(len(last_line)):
+                if last_line[i].split(':')[0] == 'average':
+                    averge_value = last_line[i].split(':')[1]
+                    break
+            
+        bit_rate_line = bit_rate_line.split(', ')
+        for i in range(len(bit_rate_line)):
+            if bit_rate_line[i].split(': ')[0] == 'bitrate':
+                bit_rate_value = bit_rate_line[i].split(': ')[1].split(' ')[0]
+                break
+    with open(result_name, 'w') as result:
+        result.write(f'bitrate: {bit_rate_value}')
+        result.write(f'\n{VQM_type} average: {averge_value}')
+    last_index = result_name.index('.')
+    new_result_name = result_name[0 : last_index] + '__{0}.txt'.format(bit_rate_value)
+    if (os.path.exists(new_result_name)):
+        os.remove(new_result_name)
+    os.rename(result_name, new_result_name)
+
+    os.chdir('..')
+
+def make_folders_for_video():
     if not os.path.exists('all_data_psnr'):
         os.mkdir('all_data_psnr')
     if not os.path.exists('results_psnr'):
@@ -137,8 +209,9 @@ def handle_video(video_name: str):
         os.mkdir("all_data_xpsnr")
     if not os.path.exists("results_xpsnr"):
         os.mkdir("results_xpsnr")
+
+def get_videos():
     directory_files = os.listdir()
-    original = ''
     has_changed = True
     while (has_changed):
         has_changed = False
@@ -152,7 +225,16 @@ def handle_video(video_name: str):
                 directory_files.remove(file)
                 has_changed = True
                 break
-    if len(directory_files) == 0:
+
+    return original, directory_files
+
+def handle_video(video_name: str):
+    """ Create for a video_name 2 folders - all_data and results """
+    os.chdir("{0}".format(video_name)) 
+    make_folders_for_video()
+    original, directory_files = get_videos()
+
+    if len(directory_files) == 0: # If video does not contain distorted videos
         os.chdir("..")
         return
     current_folder = os.getcwd()
@@ -161,132 +243,9 @@ def handle_video(video_name: str):
         # make directory all_data
         all_data_name = 'all_data_' + file.split('.')[0] + '.txt'
         result_name = 'results_' + file.split('.')[0] + '.txt'
-
         call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name)
-        
-        os.chdir("results_psnr")
-        # change psnr files
-        psnr_averge_value = 0
-        bit_rate_value = 0
-        profiling_file = 'profiling_' + result_name.split('results_')[1]
-        if not os.path.exists('profiling'):
-            os.mkdir('profiling')
-        file_content = []
-        with open(result_name, 'r') as result_file:
-            # check if lines starts with '******'
-            results_lines = result_file.readlines()
-            os.chdir('profiling')
-            with open(profiling_file, 'w') as profiling:
-                        profiling.truncate()
-            os.chdir('..')
-            for line in results_lines:
-                if line.endswith('******\n') or line.endswith('******'):
-                    os.chdir('profiling')
-                    with open(profiling_file, 'a') as profiling:
-                        profiling.write(line)
-                    os.chdir('..')
-                elif not line.strip().startswith('Last message repeated'):
-                    file_content.append(line)  
-        with open(result_name, 'w') as result_file:
-            result_file.truncate()
-            for line in file_content:
-                result_file.write(line)
-        with open(result_name, 'r') as result_file:
-            # find the 2nd line which start with word "Duration"
-            bit_rate_line = ""                
-            found_first = False
-            # copy result file to result_file_temp
-            result_file_temp = result_file.readlines()
-            for line in result_file_temp:
-                line = line.strip()
-                if line.startswith("Duration"):
-                    if found_first:
-                        bit_rate_line = line
-                        break
-                    else:
-                        found_first = True
-            last_line = result_file_temp[-1].split(' ')
-            
-            for i in range(len(last_line)):
-                if last_line[i].split(':')[0] == 'average':
-                    psnr_averge_value = last_line[i].split(':')[1]
-                    break
-            bit_rate_line = bit_rate_line.split(', ')
-            for i in range(len(bit_rate_line)):
-                if bit_rate_line[i].split(': ')[0] == 'bitrate':
-                    bit_rate_value = bit_rate_line[i].split(': ')[1].split(' ')[0]
-                    break
-        with open(result_name, 'w') as result:
-            result.write("bitrate: {0}".format(bit_rate_value))
-            result.write("\nPSNR average: {0}".format(psnr_averge_value))
-        last_index = result_name.index('.')
-        new_result_name = result_name[0 : last_index] + '__{0}.txt'.format(bit_rate_value)
-        if (os.path.exists(new_result_name)):
-            os.remove(new_result_name)
-        os.rename(result_name, new_result_name)  
-        # change XPSNR files      
-
-        os.chdir("..\\results_xpsnr")
-        xpsnr_averge_value = 0
-        bit_rate_value = 0
-        profiling_file = 'profiling_' + result_name.split('results_')[1]
-        if not os.path.exists('profiling'):
-            os.mkdir('profiling')
-        file_content = []
-        print(os.getcwd())
-        with open(result_name, 'r') as result_file:
-            # check if lines starts with '******'
-            results_lines = result_file.readlines()
-            os.chdir('profiling')
-            with open(profiling_file, 'w') as profiling:
-                        profiling.truncate()
-            os.chdir('..')
-            print(os.getcwd())
-
-            for line in results_lines:
-                if line.endswith('******\n') or line.endswith('******'):
-                    os.chdir('profiling')
-                    with open(profiling_file, 'a') as profiling:
-                        profiling.write(line)
-                    os.chdir('..')
-                elif not line.strip().startswith('Last message repeated'):
-                    file_content.append(line)  
-        with open(result_name, 'w') as result_file:
-            result_file.truncate()
-            for line in file_content:
-                result_file.write(line)
-        with open(result_name, 'r') as result_file:
-            # find the 2nd line which start with word "Duration"
-            bit_rate_line = ""                
-            found_first = False
-            # copy result file to result_file_temp
-            result_file_temp = result_file.readlines()
-            for line in result_file_temp:
-                line = line.strip()
-                if line.startswith("Duration"):
-                    if found_first:
-                        bit_rate_line = line
-                        break
-                    else:
-                        found_first = True
-            last_line = result_file_temp[-1].split(' ')
-            
-            xpsnr_averge_value = calculate_average_of_all_frames(file_name=all_data_name)
-            bit_rate_line = bit_rate_line.split(', ')
-            for i in range(len(bit_rate_line)):
-                if bit_rate_line[i].split(': ')[0] == 'bitrate':
-                    bit_rate_value = bit_rate_line[i].split(': ')[1].split(' ')[0]
-                    break
-        with open(result_name, 'w') as result:
-            result.write("bitrate: {0}".format(bit_rate_value))
-            result.write("\nXPSNR average: {0}".format(xpsnr_averge_value))
-        last_index = result_name.index('.')
-        new_result_name = result_name[0 : last_index] + '__{0}.txt'.format(bit_rate_value)
-        if (os.path.exists(new_result_name)):
-            os.remove(new_result_name)
-        os.rename(result_name, new_result_name)  
-
-        os.chdir("..")
+        calculate_XPSNR_PSNR_files("psnr", result_name=result_name, all_data_name=all_data_name)
+        calculate_XPSNR_PSNR_files("xpsnr", result_name=result_name, all_data_name=all_data_name)
     handle_profiling()
     os.chdir("..")
 
@@ -385,6 +344,7 @@ def create_graph(video_name: str, different_codecs: str):
             c_x_XPSNR.append(x_value)
             c_y_XPSNR.append(y_value)
     plt.figure()
+    ax = plt.subplot(111)
 
     plt.title('{0}'.format(video_name))
     plt.xlabel('Bit rate')
@@ -418,7 +378,9 @@ def create_graph(video_name: str, different_codecs: str):
                 marker='o', markerfacecolor='red', markersize=6)
     
     if len(all_codecs) != 0:
-        plt.legend(title="{0}".format(legend_title))
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0 + box.height * 0.25, box.width, box.height * 0.75])
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.16), ncol=2, title="{0}".format(legend_title))
     #  plt.show()
     os.chdir('..')
     plt.savefig("{0}_graph.png".format(video_name))

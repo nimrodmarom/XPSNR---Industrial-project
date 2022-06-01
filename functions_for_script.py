@@ -30,7 +30,7 @@ def count_videos():
     print(count)
         
 def calculate_average_of_all_frames(file_name) -> float:
-    print (os.getcwd())
+    # print (os.getcwd())
     os.chdir("..\\all_data_xpsnr")
     count = 0
     avg_sum = 0
@@ -57,7 +57,7 @@ def calculate_average_of_all_frames(file_name) -> float:
     return (4*Y_value + U_value + V_value)/6
 
 def calculate_avg_by_folder(video_name):
-    print (os.getcwd())
+    # print (os.getcwd())
     os.chdir("..\\videos\\AC4BF\\all_data")
     count = 0
     sum_Y, sum_U, sum_V = 0, 0, 0
