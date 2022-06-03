@@ -193,14 +193,14 @@ def calculate_XPSNR_PSNR_files(VQM_type: str, result_name: str, all_data_name: s
         result.write(f'bitrate: {bit_rate_value}')
         result.write(f'\n{VQM_type} average: {averge_value}')
     last_index = result_name.index('.')
-    new_result_name = result_name[0 : last_index] + '__{0}.txt'.format(bit_rate_value)
+    new_result_name = result_name[0 : last_index] + f'__{bit_rate_value}.txt'
     if (os.path.exists(new_result_name)):
         os.remove(new_result_name)
     os.rename(result_name, new_result_name)
 
     os.chdir('..')
 
-def make_folders_for_video():
+def make_folders_for_video(VQM_type : str, ):
     if not os.path.exists('all_data_psnr'):
         os.mkdir('all_data_psnr')
     if not os.path.exists('results_psnr'):
@@ -209,6 +209,43 @@ def make_folders_for_video():
         os.mkdir("all_data_xpsnr")
     if not os.path.exists("results_xpsnr"):
         os.mkdir("results_xpsnr")
+
+def handle_plot(video_name : str, VQM_type : str, all_codecs : list, a_x : list, a_y : list, b_x : list, b_y : list, c_x : list, c_y : list, legend_title : str):
+    os.chdir('results_' + VQM_type)
+    plt.figure()
+    ax = plt.subplot(111)
+
+    plt.title(f'{video_name} {VQM_type} Values')
+    plt.xlabel('Bit Rate')
+    plt.ylabel(f'{VQM_type} Value')
+    line_style = 'solid'
+    if (VQM_type == 'psnr'):
+        line_style='dashed'
+    if len(all_codecs) >= 1:
+        plt.plot(a_x, a_y, label = f'{VQM_type} {all_codecs[0]} (base)', color='green', linestyle=line_style , linewidth = 3,
+             marker='o', markerfacecolor='red', markersize=6)
+    if len(all_codecs) >= 2:
+        bd_rate = calculate_BD_rate(a_x, a_y, b_x, b_y)
+        bd_rate = round(bd_rate, 1)
+        
+        plt.plot(b_x, b_y, label = f'{VQM_type} {all_codecs[1]} BD-rate: {bd_rate}', color='blue', linestyle=line_style, linewidth = 3,
+            marker='o', markerfacecolor='red', markersize=6)
+        
+    if len(all_codecs) >= 3:
+        bd_rate = calculate_BD_rate(a_x, a_y, c_x, c_y)
+        bd_rate = round(bd_rate, 1)
+
+        plt.plot(c_x, c_y, label = f'{VQM_type} {all_codecs[1]} BD-rate: {bd_rate}', color='yellow', linestyle=line_style, linewidth = 3,
+             marker='o', markerfacecolor='red', markersize=6)
+    
+    if len(all_codecs) != 0:
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0 + box.height * 0.25, box.width, box.height * 0.75])
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.16), ncol=2, title=f'{legend_title}')
+    #  plt.show()
+    os.chdir('..')
+    plt.savefig(f'{video_name} {VQM_type} graph.png')
+    plt.close()
 
 def get_videos():
     directory_files = os.listdir()
@@ -230,7 +267,7 @@ def get_videos():
 
 def handle_video(video_name: str):
     """ Create for a video_name 2 folders - all_data and results """
-    os.chdir("{0}".format(video_name)) 
+    os.chdir(f'{video_name}')
     make_folders_for_video()
     original, directory_files = get_videos()
 
@@ -249,39 +286,8 @@ def handle_video(video_name: str):
     handle_profiling()
     os.chdir("..")
 
-def create_graph(video_name: str, different_codecs: str):
-    """ create graph for video_name"""
-    """ different_codecs is True if there are different VERSIONS of codecs in the video, otherwise it is the same codec with different extension """
-    os.chdir(video_name)
-    # remove graph if exists
-    if os.path.exists('{0}_graph.png'.format(video_name)):
-        os.remove('{0}_graph.png'.format(video_name))
-    os.chdir("results_psnr")
-    
-    all_codecs = []
-    legend_title = 'Different codecs'
-    for file in os.listdir():
-        if not (file.endswith('.txt')):
-            continue
-        if len(file.split('__')) == 6:
-            continue
-        if different_codecs:
-            if file.split('__')[6] not in all_codecs:
-                all_codecs.append(file.split('__')[6])
-        else:
-            if file.split('__')[7] not in all_codecs:
-                all_codecs.append(file.split('__')[7])
-                legend_title = file.split('__')[6]
-    directory_files = os.listdir()
-    # remove folders from directory_files
-    for file in directory_files:
-        if os.path.isdir(file):
-            directory_files.remove(file)
-    directory_files.sort(key=lambda x: float(x.split('__')[-1].split('.')[0]))
-
-    a_x, a_y = [], []
-    b_x, b_y = [], []
-    c_x, c_y = [], []
+def produce_psnr_axis(directory_files, all_codecs, different_codecs):
+    a_x, a_y, b_x, b_y, c_x, c_y = [], [], [], [], [], []
     for file in directory_files:
         file_attributes = file.split('__')
         if len(file_attributes) == 6:
@@ -307,8 +313,12 @@ def create_graph(video_name: str, different_codecs: str):
         if len(all_codecs) >= 3 and current_codec == all_codecs[2]:
             c_x.append(x_value)
             c_y.append(y_value)
-    
-    os.chdir ("..\\results_xpsnr")
+        
+    os.chdir('..')
+    return a_x, a_y, b_x, b_y, c_x, c_y
+
+def produce_xpsnr_axis(directory_files, all_codecs, different_codecs):
+    os.chdir('results_xpsnr')
     directory_files = os.listdir()
     # remove folders from directory_files
     for file in directory_files:
@@ -343,49 +353,45 @@ def create_graph(video_name: str, different_codecs: str):
         if len(all_codecs) >= 3 and current_codec == all_codecs[2]:
             c_x_XPSNR.append(x_value)
             c_y_XPSNR.append(y_value)
-    plt.figure()
-    ax = plt.subplot(111)
-
-    plt.title('{0}'.format(video_name))
-    plt.xlabel('Bit rate')
-    plt.ylabel('PSNR value')
-
-    if len(all_codecs) >= 1:
-        plt.plot(a_x, a_y, label = "PSNR {0} (base)".format(all_codecs[0]), color='green', linestyle='solid' , linewidth = 3,
-             marker='o', markerfacecolor='red', markersize=6)
-        plt.plot(a_x_XPSNR, a_y_XPSNR, label = "XPSNR {0} (base)".format(all_codecs[0]), color='green', linestyle='dashed' , linewidth = 3,
-                marker='o', markerfacecolor='red', markersize=6)
-    if len(all_codecs) >= 2:
-        bd_rate_psnr = calculate_BD_rate(a_x, a_y, b_x, b_y)
-        bd_rate_psnr = round(bd_rate_psnr, 1)
-        bd_rate_xpsnr = calculate_BD_rate(a_x_XPSNR, a_y_XPSNR, b_x_XPSNR, b_y_XPSNR)
-        bd_rate_xpsnr = round(bd_rate_xpsnr, 1)
-        
-        plt.plot(b_x, b_y, label = "PSNR {0} BD-rate: {1}".format(all_codecs[1], bd_rate_psnr), color='blue', linestyle='solid', linewidth = 3,
-            marker='o', markerfacecolor='red', markersize=6)
-        plt.plot(b_x_XPSNR, b_y_XPSNR, label = "XPSNR {0} BD-rate: {1}".format(all_codecs[1], bd_rate_xpsnr), color='blue', linestyle='dashed', linewidth = 3,
-            marker='o', markerfacecolor='red', markersize=6)
-        
-    if len(all_codecs) >= 3:
-        bd_rate_psnr = calculate_BD_rate(a_x, a_y, c_x, c_y)
-        bd_rate_psnr = round(bd_rate_psnr, 1)
-        bd_rate_xpsnr = calculate_BD_rate(a_x_XPSNR, a_y_XPSNR, c_x_XPSNR, c_y_XPSNR)
-        bd_rate_xpsnr = round(bd_rate_xpsnr, 1)
-
-        plt.plot(c_x, c_y, label = "PSNR {0} BD-rate: {1}".format(all_codecs[2], bd_rate_psnr), color='yellow', linestyle='solid', linewidth = 3,
-             marker='o', markerfacecolor='red', markersize=6)
-        plt.plot(c_x_XPSNR, c_y_XPSNR, label = "XPSNR {0} BD-rate: {1}".format(all_codecs[2], bd_rate_xpsnr), color='yellow', linestyle='dashed', linewidth = 3,
-                marker='o', markerfacecolor='red', markersize=6)
-    
-    if len(all_codecs) != 0:
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0 + box.height * 0.25, box.width, box.height * 0.75])
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.16), ncol=2, title="{0}".format(legend_title))
-    #  plt.show()
     os.chdir('..')
-    plt.savefig("{0}_graph.png".format(video_name))
-    plt.close()
+    return a_x_XPSNR, a_y_XPSNR, b_x_XPSNR, b_y_XPSNR, c_x_XPSNR, c_y_XPSNR
 
+def create_graph(video_name: str, different_codecs: str):
+    """ create graph for video_name"""
+    """ different_codecs is True if there are different VERSIONS of codecs in the video, otherwise it is the same codec with different extension """
+    os.chdir(video_name)
+    # remove graph if exists
+    if os.path.exists(f'{video_name}_graph.png'):
+        os.remove(f'{video_name}_graph.png')
+    os.chdir("results_psnr")
+    
+    all_codecs = []
+    legend_title = 'Different codecs'
+    for file in os.listdir():
+        if not (file.endswith('.txt')):
+            continue
+        if len(file.split('__')) == 6:
+            continue
+        if different_codecs:
+            if file.split('__')[6] not in all_codecs:
+                all_codecs.append(file.split('__')[6])
+        else:
+            if file.split('__')[7] not in all_codecs:
+                all_codecs.append(file.split('__')[7])
+                legend_title = file.split('__')[6]
+    directory_files = os.listdir()
+    # remove folders from directory_files
+    for file in directory_files:
+        if os.path.isdir(file):
+            directory_files.remove(file)
+    directory_files.sort(key=lambda x: float(x.split('__')[-1].split('.')[0]))
+
+    a_x, a_y, b_x, b_y, c_x, c_y = produce_psnr_axis(directory_files, all_codecs, different_codecs)
+    a_x_XPSNR, a_y_XPSNR, b_x_XPSNR, b_y_XPSNR, c_x_XPSNR, c_y_XPSNR = produce_xpsnr_axis(directory_files, all_codecs, different_codecs)
+    
+
+    handle_plot(video_name, "xpsnr", all_codecs, a_x_XPSNR, a_y_XPSNR, b_x_XPSNR, b_y_XPSNR, c_x_XPSNR, c_y_XPSNR, legend_title)
+    handle_plot(video_name, "psnr", all_codecs, a_x, a_y, b_x, b_y, c_x, c_y, legend_title)
     os.chdir('..')
 
 def produce_database():
@@ -436,15 +442,54 @@ def produce_PDF():
     pdf_path = os.getcwd() + '\\' + 'report.pdf'
     image_lst[0].save(pdf_path, "PDF", resoultion = 100.0, save_all=True, append_images=image_lst[1:])
 
+def get_time_from_file(sub_folder: str, VQM_type: str):
+    # if exists folder sub_folder\\profling
+    last_line = []
+    if os.path.exists(f'{sub_folder}\\profiling'):
+        os.chdir(f'{sub_folder}\\profiling')
+        with open(f'Full_{VQM_type}_profiling.csv' , 'r') as csvfile:
+            rows = list(csv.reader(csvfile))
+            if (len(rows[-1]) > 0):
+                last_line = rows[-1]
+            else:
+                last_line = rows[-2]
+        os.chdir('..\\..')
+        return last_line[-1]
+    return 0
+
+
+def produce_hiostogram():
+    plt.style.use('seaborn-deep')
+    psnr_times = []
+    xpsnr_times = []
+    for folder_name in os.listdir(): # all videos
+        if not os.path.isdir(folder_name):
+            continue
+        os.chdir(folder_name) # inside a video folder
+        for sub_folder in os.listdir(): 
+            if os.path.isdir(sub_folder):
+                if sub_folder == 'results_psnr':
+                    psnr_value = get_time_from_file(sub_folder, 'psnr')
+                    psnr_times.append(float(psnr_value))
+                if sub_folder == 'results_xpsnr':
+                    xpsnr_value = get_time_from_file(sub_folder, 'xpsnr')
+                    xpsnr_times.append(float(xpsnr_value))
+        os.chdir('..')
+    psnr_times = np.array(psnr_times)
+    xpsnr_times = np.array(xpsnr_times)
+    
+
 def main():
     os.chdir("..\\videos")
-    #move_videos_to_folders()c
-    # convertVideosToY4M() //TODO: not all videos are converted. should be run again
+    # move_videos_to_folders()
+    # convertVideosToY4M() 
     # count_videos()
 
     # produce_database()
     
-    produce_graphs()        
+    # produce_graphs()        
+
+    produce_hiostogram()
 
 
 if __name__ == "__main__":
