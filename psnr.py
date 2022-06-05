@@ -28,7 +28,8 @@ class VideoCaptureYUV(object):
         if self.bitdepth == 8:
             raw = self.file.read(channel_len)
             channel_8bits = np.frombuffer(raw, dtype=np.uint8)
-            channel = np.array(channel_8bits, dtype=np.uint16) << 2  # Convert 8bits to 10 bits 
+            # channel = np.array(channel_8bits, dtype=np.uint16) << 2  # Convert 8bits to 10 bits 
+            channel = channel_8bits
 
         elif self.bitdepth == 10:
             raw = self.file.read(2 * channel_len)  # Read 2 bytes for every pixel
@@ -48,7 +49,7 @@ def psnr_channel(original, encoded, resolution : tuple, MAX_VALUE : int):
     encoded = np.array(encoded, dtype=np.double)
 
     # Calculate mean squared error
-    mse = 1 / (resolution[0] * resolution[1]) * np.mean((original - encoded) ** 2)
+    mse = (1 / (resolution[0] * resolution[1])) * np.sum((original - encoded) ** 2)
     # PSNR in dB
     psnr = 10 * np.log10((MAX_VALUE * MAX_VALUE) / mse)
     return psnr, mse
@@ -71,14 +72,17 @@ def calculate_psnr(original, encoded, resolution, frames, original_bitdepth, enc
 
         psnr_y, mse_y = psnr_channel(original_y, encoded_y, resolution, MAX_VALUE)
         psnr_y_array.append(psnr_y)
+        print ('mse Y:', mse_y, 'psnr Y:', psnr_y)
 
         psnr_u, mse_u = psnr_channel(original_u, encoded_u, resolution, MAX_VALUE)
         psnr_u_array.append(psnr_u)
+        # print ('mse U:', mse_u, 'psnr U:', psnr_u)
+
 
         psnr_v, mse_v = psnr_channel(original_v, encoded_v, resolution, MAX_VALUE)
         psnr_v_array.append(psnr_v)
 
-        mse = (mse_y + mse_u + mse_v) / 3  # Weighted MSE
+        mse = (4 * mse_y + mse_u + mse_v) / 6  # Weighted MSE
         mse_array.append(mse)
 
     # Close YUV streams

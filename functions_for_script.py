@@ -1,6 +1,14 @@
+from fileinput import filename
 import os
+import csv
+from tracemalloc import start
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpl_patches
 import numpy as np
-
+from PIL import Image
+import datetime as dt
+import typing
+import pandas as pd
 
 def move_videos_to_folders():
     """ Move all videos to its folder. """
@@ -12,8 +20,7 @@ def move_videos_to_folders():
             folder_name = file.split('__')[0]
             if not os.path.exists(folder_name):
                 os.mkdir(folder_name)
-            os.system("move {0} {1}".format(file, folder_name))
-        
+            os.system("move {0} {1}".format(file, folder_name))     
 
 def count_videos():
     """ Count the videos in the folder. """
@@ -85,7 +92,6 @@ def calculate_avg_by_folder(video_name):
     print("AVG U: ", sum_U/count)
     print("AVG V: ", sum_V/count)
 
-
 def calculate_BD_rate(R1, PSNR1, R2, PSNR2):
     lR1 = np.log(R1)
     lR2 = np.log(R2)
@@ -152,3 +158,82 @@ def convertVideosToY4M():
                 new_video_name = file.split('.')[0] + '.y4m'
                 os.system("ffmpeg -y -i {0} y4m_videos\\{1}".format(file, new_video_name))
         os.chdir('..')
+
+def get_time_from_file(sub_folder: str, VQM_type: str):
+    # if exists folder sub_folder\\profling
+    last_line = []
+    if os.path.exists(f'{sub_folder}\\profiling'):
+        os.chdir(f'{sub_folder}\\profiling')
+        with open(f'Full_{VQM_type}_profiling.csv' , 'r') as csvfile:
+            rows = list(csv.reader(csvfile))
+            if (len(rows[-1]) > 0):
+                last_line = rows[-1]
+            else:
+                last_line = rows[-2]
+        os.chdir('..\\..')
+        return last_line[-1]
+    return 0
+
+def get_videos():
+    directory_files = os.listdir()
+    has_changed = True
+    while (has_changed):
+        has_changed = False
+        for file in directory_files:
+            if len(file.split('__')) == 6:
+                original = file
+                directory_files.remove(file)
+                has_changed = True
+                break
+            elif not (file.endswith('.mp4') or file.endswith('.avi')):
+                directory_files.remove(file)
+                has_changed = True
+                break
+
+    return original, directory_files
+
+def clear_csv_files():
+    if not os.path.exists('results_psnr'):
+        return 
+    os.chdir('results_psnr')
+    if not os.path.exists('profiling'):
+        os.chdir('..')
+        return
+    os.chdir('profiling')
+    # check if Full_PSNR_profiling.csv exists
+    if os.path.exists('Full_PSNR_profiling.csv'):
+        os.remove('Full_PSNR_profiling.csv')
+    
+    os.chdir('..\\..')
+    if not os.path.exists('results_xpsnr'):
+        return 
+    os.chdir('results_xpsnr')
+    if not os.path.exists('profiling'):
+        os.chdir('..')
+        return
+    os.chdir('profiling')
+    # check if Full_PSNR_profiling.csv exists
+    if os.path.exists('Full_XPSNR_profiling.csv'):
+        os.remove('Full_XPSNR_profiling.csv')
+    os.chdir('..\\..')
+
+def calculate_full_profiling_average(type):
+    folder = 'results_' + type
+    os.chdir(folder)
+    os.chdir('profiling')
+    average = 0
+    # average of all the the value at the end of the line in the csv file
+    with open('full_' + type + '_profiling.csv', 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        average = 0
+        rows = list(reader)
+        del rows[0]
+        for row in rows:
+            if len(row) > 0:
+                average += float(row[-1])
+        average /= len(rows)
+    with open('full_' + type + '_profiling.csv', 'a') as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+        writer.writerow(['Average', average])
+
+    os.chdir('..\\..')
