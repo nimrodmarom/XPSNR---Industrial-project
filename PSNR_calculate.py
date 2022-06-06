@@ -4,8 +4,9 @@ from functions_for_script import *
 def profiling_functions(type):
     os.chdir(f'results_{type}\\profiling')
     # delete csv file if exists
-    if os.path.exists('functions_profiling.csv'):
-        os.remove('functions_profiling.csv')
+    if os.path.exists(f'{type}_functions_profiling.csv'):
+        os.remove(f'{type}_functions_profiling.csv')
+    profiling_functions_rows = []
     for file in os.listdir():
         function_dict = {}
         if file.endswith(".txt"):
@@ -15,44 +16,46 @@ def profiling_functions(type):
                     line_split = line.split(': ')
                     key = line_split[0].split('******')[1]
                     data = line_split[2].split(' ')[0]
-                    # data_t is a tupple of (data, count), count ++ if the key is already in the dictionary
+                    # data_t is a tupple of (data, count)
+                    # count++ if the key is already in the dictionary
                     data_t = function_dict.get(key)
                     if data_t is None:
                         function_dict[key] = (float(data), 1)
                     else:
                         function_dict[key] = (data_t[0] + float(data), data_t[1] + 1)
-            with open('functions_profiling.csv', 'a', newline='') as csvfile:
-                writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-                if os.stat('functions_profiling.csv').st_size == 0:
-                    writer.writerow(['file name'] + [[key, 'average time'] + [key, 'counter'] for key in function_dict])
-                # write row of the keys from function_dict
-                writer.writerow([file] + [[function_dict[key][0] / function_dict[key][1]] + [function_dict[key][1]] for key in function_dict])                         
-        os.remove(file)
-
+            file_name = file.split('profiling_')[1]
+            profiling_functions_row = [file_name] + [[function_dict[key][0] / function_dict[key][1]] + [function_dict[key][1]] for key in function_dict]
+            profiling_functions_rows.append(profiling_functions_row)
+                           
+            os.remove(file)
+    with open(f'{type}_functions_profiling.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+        if os.stat(f'{type}_functions_profiling.csv').st_size == 0:
+            writer.writerow(['file name'] + [[str(key) + ' average time'] + [str(key) + ' counter'] for key in function_dict])
+        writer.writerows(profiling_functions_rows)
     os.chdir('..\\..')
 
 def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
+    print(os.getcwd())
     if not os.path.exists('results_xpsnr'):
             os.mkdir('results_xpsnr')
     os.chdir('results_xpsnr')
     if not os.path.exists('profiling'):
             os.mkdir('profiling')
     os.chdir('profiling')
-    print(os.getcwd())
-
 
     with open('full_xpsnr_profiling.csv', 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
         # check if csvfile is empty:
         if os.stat('full_xpsnr_profiling.csv').st_size == 0:
-            writer.writerow(['video name', 'start time', 'end time', 'different (seconds)'])
+            writer.writerow(['file name', 'start time', 'end time', 'different (seconds)'])
         os.chdir('..\\..')
-        start_time = dt.datetime.now()
+        start_time = time.time()
         os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:2_xpsnr -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -lavfi xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_xpsnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
+        end_time = time.time()
         os.chdir('results_xpsnr\\profiling')
-        end_time = dt.datetime.now()
-        diff = str(end_time - start_time)
-        diff = float(diff.split(':')[0]) * 3600 + float(diff.split(':')[1]) * 60 + float(diff.split(':')[2])
+
+        diff = end_time - start_time
         writer.writerow([file ,start_time, end_time, diff])
 
     os.chdir('..\\..')
@@ -62,29 +65,28 @@ def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
     if not os.path.exists('profiling'):
             os.mkdir('profiling')
     os.chdir('profiling')
-    print(os.getcwd())
     with open('full_psnr_profiling.csv', 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
         if os.stat('full_psnr_profiling.csv').st_size == 0:
-            writer.writerow(['video name', 'start time', 'end time', 'different (seconds)'])
-        start_time = dt.datetime.now()
+            writer.writerow(['file name', 'start time', 'end time', 'different (seconds)'])
         os.chdir('..\\..')
+        start_time = time.time()
         os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:2_xpsnr -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -lavfi psnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_psnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
+        end_time = time.time()
         os.chdir('results_psnr\\profiling')
-        end_time = dt.datetime.now()
-        diff = str(end_time - start_time)
-        diff = float(diff.split(':')[0]) * 3600 + float(diff.split(':')[1]) * 60 + float(diff.split(':')[2])
+        diff = end_time - start_time
         writer.writerow([file, start_time, end_time, diff])
     os.chdir('..\\..')
+            
 
 def handle_profiling():
     calculate_full_profiling_average('xpsnr')
     calculate_full_profiling_average('psnr')
     profiling_functions('psnr')
     profiling_functions('xpsnr')
+    profiling_precentage_xpsnr_functions()
 
-def calculate_XPSNR_PSNR_files(VQM_type: str, result_name: str, all_data_name: str):
-    
+def calculate_XPSNR_PSNR_files(VQM_type: str, result_name: str, all_data_name: str):   
     os.chdir('results_' + VQM_type)
     averge_value = 0
     bit_rate_value = 0
@@ -92,13 +94,12 @@ def calculate_XPSNR_PSNR_files(VQM_type: str, result_name: str, all_data_name: s
     if not os.path.exists('profiling'):
         os.mkdir('profiling')
     file_content = []
-    #print(os.getcwd())
     with open(result_name, 'r') as result_file:
         # check if lines starts with '******'
         results_lines = result_file.readlines()
         os.chdir('profiling')
         with open(profiling_file, 'w') as profiling:
-                    profiling.truncate()
+            profiling.truncate()
         profiling_lines = []
         for line in results_lines:
             if line.endswith('******\n') or line.endswith('******'):
@@ -198,7 +199,6 @@ def handle_plot(video_name : str, VQM_type : str, all_codecs : list, a_x : list,
         box = ax.get_position()
         ax.set_position([box.x0, box.y0 + box.height * 0.25, box.width, box.height * 0.75])
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.16), ncol=2, title=f'{legend_title}')
-    #  plt.show()
     os.chdir('..')
     plt.savefig(f'{video_name} {VQM_type} graph.png')
     plt.close()
@@ -206,21 +206,20 @@ def handle_plot(video_name : str, VQM_type : str, all_codecs : list, a_x : list,
 def handle_video(video_name: str):
     """ Create for a video_name 2 folders - all_data and results """
     os.chdir(f'{video_name}')
-    # make_folders_for_video()
-    # original, directory_files = get_videos()
+    make_folders_for_video()
+    original, directory_files = get_videos()
 
-    # if len(directory_files) == 0: # If video does not contain distorted videos
-    #     os.chdir("..")
-    #     return
-    # current_folder = os.getcwd()
-    # clear_csv_files()
-    # for file in directory_files:
-    #     # make directory all_data
-    #     all_data_name = 'all_data_' + file.split('.')[0] + '.txt'
-    #     result_name = 'results_' + file.split('.')[0] + '.txt'
-    #     call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name)
-    #     calculate_XPSNR_PSNR_files("psnr", result_name=result_name, all_data_name=all_data_name)
-    #     calculate_XPSNR_PSNR_files("xpsnr", result_name=result_name, all_data_name=all_data_name)
+    if len(directory_files) == 0: # If video does not contain distorted videos
+        os.chdir("..")
+        return
+    current_folder = os.getcwd()
+    clear_csv_files()
+    for file in directory_files:
+        all_data_name = 'all_data_' + file.split('.')[0] + '.txt'
+        result_name = 'results_' + file.split('.')[0] + '.txt'
+        call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name)
+        calculate_XPSNR_PSNR_files("psnr", result_name=result_name, all_data_name=all_data_name)
+        calculate_XPSNR_PSNR_files("xpsnr", result_name=result_name, all_data_name=all_data_name)
     handle_profiling()
     os.chdir("..")
 
@@ -334,9 +333,9 @@ def create_graph(video_name: str, different_codecs: str):
 
 def produce_database():
     for folder_name in os.listdir():
+        print(os.getcwd())
         if not os.path.isdir(folder_name):
             continue
-
         handle_video(folder_name)
 
 def produce_graphs():
@@ -380,7 +379,7 @@ def produce_PDF():
     pdf_path = os.getcwd() + '\\' + 'report.pdf'
     image_lst[0].save(pdf_path, "PDF", resoultion = 100.0, save_all=True, append_images=image_lst[1:])
 
-def produce_hiostogram():
+def produce_histogram():
     plt.style.use('seaborn-deep')
     psnr_times = []
     xpsnr_times = []
@@ -437,10 +436,9 @@ def produce_hiostogram():
     ax.legend(handles, video_names_list, fontsize='small', 
            fancybox=True, framealpha=0.7, bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0,
            handlelength=0, handletextpad=0)
-    #plt.legend(bbox_to_anchor=(1.02, 0.15), loc='upper left', borderaxespad=0)
 
-    # add a list
-    plt.show()
+    fig.savefig('histogram.png')
+
 
 def main():
     os.chdir("..\\videos")
@@ -452,7 +450,7 @@ def main():
     
     # produce_graphs()        
 
-    # produce_hiostogram()
+    # produce_histogram()
 
 if __name__ == "__main__":
     main()

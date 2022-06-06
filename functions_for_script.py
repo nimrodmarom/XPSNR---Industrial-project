@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpl_patches
 import numpy as np
 from PIL import Image
-import datetime as dt
+import time
 import typing
 import pandas as pd
 
@@ -192,6 +192,16 @@ def get_videos():
 
     return original, directory_files
 
+def make_folders_for_video():
+    if not os.path.exists('all_data_psnr'):
+        os.mkdir('all_data_psnr')
+    if not os.path.exists('results_psnr'):
+        os.mkdir('results_psnr')
+    if not os.path.exists("all_data_xpsnr"):
+        os.mkdir("all_data_xpsnr")
+    if not os.path.exists("results_xpsnr"):
+        os.mkdir("results_xpsnr")
+
 def clear_csv_files():
     if not os.path.exists('results_psnr'):
         return 
@@ -200,7 +210,6 @@ def clear_csv_files():
         os.chdir('..')
         return
     os.chdir('profiling')
-    # check if Full_PSNR_profiling.csv exists
     if os.path.exists('Full_PSNR_profiling.csv'):
         os.remove('Full_PSNR_profiling.csv')
     
@@ -212,17 +221,14 @@ def clear_csv_files():
         os.chdir('..')
         return
     os.chdir('profiling')
-    # check if Full_PSNR_profiling.csv exists
     if os.path.exists('Full_XPSNR_profiling.csv'):
         os.remove('Full_XPSNR_profiling.csv')
     os.chdir('..\\..')
 
 def calculate_full_profiling_average(type):
-    folder = 'results_' + type
+    folder = 'results_' + type +'\\profiling'
     os.chdir(folder)
-    os.chdir('profiling')
     average = 0
-    # average of all the the value at the end of the line in the csv file
     with open('full_' + type + '_profiling.csv', 'r') as csvfile:
         reader = csv.reader(csvfile)
         average = 0
@@ -234,6 +240,43 @@ def calculate_full_profiling_average(type):
         average /= len(rows)
     with open('full_' + type + '_profiling.csv', 'a') as csvfile:
         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-        writer.writerow(['Average', average])
+        writer.writerow(['Average', '' , '', average])
 
+    os.chdir('..\\..')
+
+def profiling_precentage_xpsnr_functions():
+    time_list = {}
+    os.chdir('results_xpsnr\\profiling')
+    with open('full_xpsnr_profiling.csv', 'r', newline='') as csvfile:
+        reader = csv.reader(csvfile, quoting=csv.QUOTE_ALL)
+        for row in reader:
+            if row == []:
+                continue 
+            if row[0] == 'file name' or row[0] == 'Average':
+                continue
+            file_name = row[0].split('.')[0]
+            diff = row[3]
+            time_list[file_name] = float(diff)
+    new_file_rows = []
+    header_row = []
+    header_row.append('file name')
+    with open('xpsnr_functions_profiling.csv', 'r', newline='') as csvfile:
+        reader = csv.reader(csvfile, quoting=csv.QUOTE_ALL)
+        for row in reader:
+            if row[0] == 'file name':
+                for i in range(1, len(row)):
+                    name = row[i].split(" ")[0].split("['")[1]
+                    header_row.append(name)
+                new_file_rows.append(header_row)
+                continue
+            video_row = [row[0].split('.')[0]]
+            video_name = video_row[0]
+            for i in range(1, len(row)):
+                time  = float(row[i].split('[')[1].split(',')[0])
+                counter = float(row[i].split('[')[1].split(',')[1].split(']')[0])
+                video_row.append(str(time * counter / time_list[video_name] * 100) + '%')
+            new_file_rows.append(video_row)
+    with open('functions_profiling_percentage.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+        writer.writerows(new_file_rows)
     os.chdir('..\\..')
