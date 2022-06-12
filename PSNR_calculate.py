@@ -51,7 +51,7 @@ def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
             writer.writerow(['file name', 'start time', 'end time', 'different (seconds)'])
         os.chdir('..\\..')
         start_time = time.time()
-        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:2_xpsnr -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -lavfi xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_xpsnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
+        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:2_xpsnr -r 30 -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_xpsnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
         end_time = time.time()
         os.chdir('results_xpsnr\\profiling')
 
@@ -71,7 +71,7 @@ def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
             writer.writerow(['file name', 'start time', 'end time', 'different (seconds)'])
         os.chdir('..\\..')
         start_time = time.time()
-        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:2_xpsnr -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -lavfi psnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_psnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
+        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:2_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]psnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_psnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
         end_time = time.time()
         os.chdir('results_psnr\\profiling')
         diff = end_time - start_time
@@ -434,10 +434,10 @@ def produce_histogram():
         video_names_list.append(f'{index}: {video_names[key]}')
     
     ax.legend(handles, video_names_list, fontsize='small', 
-           fancybox=True, framealpha=0.7, bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0,
+           fancybox=False, framealpha=0.7, bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0,
            handlelength=0, handletextpad=0)
-
-    fig.savefig('histogram.png')
+    #save as pdf
+    plt.savefig('histogram.pdf', bbox_inches='tight')
 
 
 def main():
@@ -446,11 +446,11 @@ def main():
     # convertVideosToY4M() 
     # count_videos()
 
-    produce_database()
+    # produce_database()
     
-    # produce_graphs()        
+    produce_graphs()        
 
-    # produce_histogram()
+    produce_histogram()
 
 if __name__ == "__main__":
     main()
