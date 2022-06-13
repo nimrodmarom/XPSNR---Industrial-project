@@ -96,9 +96,10 @@ def calculate_psnr(original, encoded, resolution, frames, original_bitdepth, enc
         psnr = (4 * psnr_y + psnr_u + psnr_v) / 6
         psnr = psnr.round(2)
         # print to file 'try.txt'
-        with open('try.txt', 'a') as f:
+        os.chdir('psnr_values')
+        with open(f'{encoded.split(".")[0]}_python_psnr_out.txt', 'a') as f:
             f.write (f'n:{i}: mse_avg:{mse} mse_y:{mse_y} mse_u:{mse_u} mse_v:{mse_v}, psnr_avg:{psnr} psnr_y:{psnr_y}, psnr_u:{psnr_u} psnr_v:{psnr_v}\n')
-
+        os.chdir('..')
 
         
         i += 1
@@ -123,8 +124,10 @@ def covert_videos_to_yuv(video_original, video_distorted):
     """
     yuv_original_video = video_original.split('.')[0] + '.yuv'
     yuv_distorted_video = video_distorted.split('.')[0] + '.yuv'
-    os.system(f"ffmpeg -i {video_original} {yuv_original_video}")
-    os.system(f"ffmpeg -i {video_distorted} {yuv_distorted_video}")
+    #os.system(f"ffmpeg -i {video_original} {yuv_original_video}")
+    #os.system(f"ffmpeg -i {video_distorted} {yuv_distorted_video}")
+    os.system(f"ffmpeg -i {video_original} -c:v rawvideo -pix_fmt yuv420p {yuv_original_video}")
+    os.system(f"ffmpeg -i {video_distorted} -c:v rawvideo -pix_fmt yuv420p {yuv_distorted_video}")
 
 def delete_converted_videos(original_video, encoded_video):
     """
@@ -136,31 +139,41 @@ def delete_converted_videos(original_video, encoded_video):
     os.remove(yuv_encoded_video)
 
 if __name__ == "__main__":
-    os.chdir('..\\videos\\AC4BF')
-    original_video = 'AC4BF__1920x1080__420__8__60__300.y4m'
-    encoded_video = 'AC4BF__1920x1080__420__8__60__300__aom__ll_gaming__500.y4m'
+    os.chdir('..\\videos_2')
+    original_video = 'Aerial_fr100_lossless.mp4'
+    encoded_video = 'Aerial_fr100_tbr2000k.mp4'
     covert_videos_to_yuv(original_video, encoded_video)
     original_video = original_video.split('.')[0] + '.yuv'
     encoded_video = encoded_video.split('.')[0] + '.yuv'
 
-    resolution = original_video.split('__')[1].split('x')
-    resolution = (int(resolution[0]), int(resolution[1]))
-    frames = int(encoded_video.split('__')[5])
-    original_bitdepth = int(original_video.split('__')[3])
-    encoded_bitdepth = int(encoded_video.split('__')[3])
-    # resolution = (1920, 1080)
-    # frames = 5
-    # original_bitdepth, encoded_bitdepth = 8, 8
+    # resolution = original_video.split('__')[1].split('x')
+    # resolution = (int(resolution[0]), int(resolution[1]))
+    # frames = int(encoded_video.split('__')[5])
+    # original_bitdepth = int(original_video.split('__')[3])
+    # encoded_bitdepth = int(encoded_video.split('__')[3])
 
+    resolution = (1920, 1080)
+    frames = 100
+    original_bitdepth, encoded_bitdepth = 8, 8
+
+    if not os.path.exists('psnr_values'):
+        os.makedirs('psnr_values')
+
+    os.chdir('psnr_values')
+    with open(f'{encoded_video.split(".")[0]}_python_psnr_out.txt', 'w') as f:
+        f.truncate()
+    os.chdir('..')
 
     psnr_y, pnsr_u, psnr_v, psnr_yuv = calculate_psnr(
         original_video, encoded_video, resolution, 
         frames, original_bitdepth, encoded_bitdepth
     )
-    with open('try.txt', 'a') as f:
+
+    os.chdir('psnr_values')
+    with open(f'{encoded_video.split(".")[0]}_python_psnr_out.txt', 'a') as f:
         f.write(f'Y-PSNR: {psnr_y:.4f}dB\n')
         f.write(f'U-PSNR: {pnsr_u:.4f}dB\n')
         f.write(f'V-PSNR: {psnr_v:.4f}dB\n')
         f.write(f'YUV-PSNR: {psnr_yuv:.4f}\ndB')
-
+    os.chdir('..')
     delete_converted_videos(original_video, encoded_video)

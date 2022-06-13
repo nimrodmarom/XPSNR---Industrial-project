@@ -164,7 +164,7 @@ def get_time_from_file(sub_folder: str, VQM_type: str):
     last_line = []
     if os.path.exists(f'{sub_folder}\\profiling'):
         os.chdir(f'{sub_folder}\\profiling')
-        with open(f'Full_{VQM_type}_profiling.csv' , 'r') as csvfile:
+        with open(f'full_{VQM_type}_profiling.csv' , 'r') as csvfile:
             rows = list(csv.reader(csvfile))
             if (len(rows[-1]) > 0):
                 last_line = rows[-1]
@@ -172,7 +172,7 @@ def get_time_from_file(sub_folder: str, VQM_type: str):
                 last_line = rows[-2]
         os.chdir('..\\..')
         return last_line[-1]
-    return 0
+    return -1
 
 def get_videos():
     directory_files = os.listdir()

@@ -51,7 +51,7 @@ def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
             writer.writerow(['file name', 'start time', 'end time', 'different (seconds)'])
         os.chdir('..\\..')
         start_time = time.time()
-        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:2_xpsnr -r 30 -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_xpsnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
+        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_xpsnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
         end_time = time.time()
         os.chdir('results_xpsnr\\profiling')
 
@@ -71,7 +71,7 @@ def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
             writer.writerow(['file name', 'start time', 'end time', 'different (seconds)'])
         os.chdir('..\\..')
         start_time = time.time()
-        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:2_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]psnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_psnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
+        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]psnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_psnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
         end_time = time.time()
         os.chdir('results_psnr\\profiling')
         diff = end_time - start_time
@@ -388,17 +388,20 @@ def produce_histogram():
     for folder_name in os.listdir(): # all videos
         if not os.path.isdir(folder_name):
             continue
-        index += 1
-        video_names[index] = folder_name
+        
         os.chdir(folder_name) # inside a video folder
         for sub_folder in os.listdir(): 
             if os.path.isdir(sub_folder):
                 if sub_folder == 'results_psnr':
                     psnr_value = get_time_from_file(sub_folder, 'psnr')
-                    psnr_times.append(float(psnr_value))
+                    if (psnr_value != -1):
+                        index += 1
+                        video_names[index] = folder_name
+                        psnr_times.append(float(psnr_value))
                 if sub_folder == 'results_xpsnr':
                     xpsnr_value = get_time_from_file(sub_folder, 'xpsnr')
-                    xpsnr_times.append(float(xpsnr_value))
+                    if (xpsnr_value != -1):
+                        xpsnr_times.append(float(xpsnr_value))
         os.chdir('..')
 
     N = index
@@ -407,7 +410,7 @@ def produce_histogram():
     xpsnr_times_tuple = tuple(xpsnr_times[:int(N)])
 
     ind = np.arange(N)  # the x locations for the groups
-    width = 0.35       # the width of the bars
+    width = 0.3       # the width of the bars
 
     fig, ax = plt.subplots()
     ax.bar(ind, psnr_times_tuple, width, color='purple')
@@ -448,7 +451,7 @@ def main():
 
     # produce_database()
     
-    produce_graphs()        
+    # produce_graphs()        
 
     produce_histogram()
 
