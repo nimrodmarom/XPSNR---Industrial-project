@@ -1,3 +1,4 @@
+from unittest import result
 from functions_for_script import *
 
 
@@ -332,6 +333,8 @@ def create_graph(video_name: str, different_codecs: str):
     os.chdir('..')
 
 def produce_database():
+    os.chdir("..\\videos")
+
     for folder_name in os.listdir():
         print(os.getcwd())
         if not os.path.isdir(folder_name):
@@ -378,6 +381,85 @@ def produce_PDF():
         os.chdir("..")  
     pdf_path = os.getcwd() + '\\' + 'report.pdf'
     image_lst[0].save(pdf_path, "PDF", resoultion = 100.0, save_all=True, append_images=image_lst[1:])
+
+def produce_time_histogram_for_specific_video():
+    os.chdir("Aerial_p30")
+    original, directory_files = get_videos()
+    test_video = directory_files[0]
+    current_folder = os.getcwd()
+    all_data_name = 'temp_data.txt'
+    result_name = 'temp_result.txt'
+    running_times = []
+    for i in range (10):
+        start_time = time.time()
+        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]psnr=stats_file=\"/data/frame_out/{3}\" -f null - > {4} 2>&1".format(current_folder, original, test_video, all_data_name, result_name))
+        end_time = time.time()
+        diff = end_time - start_time
+        print (diff)
+        profiling_file = 'profiling temp.txt'
+        with open(result_name, 'r') as result_file:
+            # check if lines starts with '******'
+            results_lines = result_file.readlines()
+            with open(profiling_file, 'w') as profiling:
+                profiling.truncate()
+            profiling_lines = []
+            time_sum =  0
+            do_psnr_lines = []
+            for line in results_lines:
+                if line.endswith('******\n') or line.endswith('******'):
+                    line_split = line.split(': ')
+                    key = line_split[0].split('******')[1]
+                    data = float(line_split[2].split(' ')[0])
+                    # data_t is a tupple of (data, count)
+                    # count++ if the key is already in the dictionary
+                    if key != 'do_psnr':
+                        continue
+                    do_psnr_lines.append(line)
+            for line in do_psnr_lines:
+                line_split = line.split(': ')
+                data = float(line_split[2].split(' ')[0])
+                time_sum += data
+        running_times.append (time_sum)
+
+    plt.style.use('ggplot')
+    plt.hist(running_times, bins=10)
+    plt.show()
+
+    running_times = []
+    for i in range (10):
+        start_time = time.time()
+        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > {4} 2>&1".format(current_folder, original, test_video, all_data_name, result_name))
+        end_time = time.time()
+        diff = end_time - start_time
+        print (diff)
+        profiling_file = 'profiling temp.txt'
+        with open(result_name, 'r') as result_file:
+            # check if lines starts with '******'
+            results_lines = result_file.readlines()
+            with open(profiling_file, 'w') as profiling:
+                profiling.truncate()
+            profiling_lines = []
+            time_sum =  0
+            do_psnr_lines = []
+            for line in results_lines:
+                if line.endswith('******\n') or line.endswith('******'):
+                    line_split = line.split(': ')
+                    key = line_split[0].split('******')[1]
+                    data = float(line_split[2].split(' ')[0])
+                    # data_t is a tupple of (data, count)
+                    # count++ if the key is already in the dictionary
+                    if key != 'do_psnr':
+                        continue
+                    do_psnr_lines.append(line)
+            for line in do_psnr_lines:
+                line_split = line.split(': ')
+                data = float(line_split[2].split(' ')[0])
+                time_sum += data
+        running_times.append (time_sum)
+
+    plt.style.use('ggplot')
+    plt.hist(running_times, bins=10)
+    plt.show()
 
 def produce_histogram():
     plt.style.use('seaborn-deep')
@@ -442,18 +524,19 @@ def produce_histogram():
     #save as pdf
     plt.savefig('histogram.pdf', bbox_inches='tight')
 
+    produce_time_histogram_for_specific_video()
 
 def main():
-    os.chdir("..\\videos")
-    # move_videos_to_folders()
-    # convertVideosToY4M() 
-    # count_videos()
 
     # produce_database()
     
     # produce_graphs()        
 
-    produce_histogram()
+    # produce_histogram()
+
+    os.chdir("..\\videos")
+    produce_time_histogram_for_specific_video()
+
 
 if __name__ == "__main__":
     main()
