@@ -159,12 +159,12 @@ def convertVideosToY4M():
                 os.system("ffmpeg -y -i {0} y4m_videos\\{1}".format(file, new_video_name))
         os.chdir('..')
 
-def get_time_from_file(sub_folder: str, VQM_type: str):
+def get_time_from_file(folder_name :str, sub_folder: str, VQM_type: str):
     # if exists folder sub_folder\\profling
     last_line = []
     if os.path.exists(f'{sub_folder}\\profiling'):
         os.chdir(f'{sub_folder}\\profiling')
-        with open(f'full_{VQM_type}_profiling.csv' , 'r') as csvfile:
+        with open(f'full_{VQM_type}_{folder_name}_profiling.csv' , 'r') as csvfile:
             rows = list(csv.reader(csvfile))
             if (len(rows[-1]) > 0):
                 last_line = rows[-1]
@@ -210,8 +210,10 @@ def clear_csv_files():
         os.chdir('..')
         return
     os.chdir('profiling')
-    if os.path.exists('Full_PSNR_profiling.csv'):
-        os.remove('Full_PSNR_profiling.csv')
+    files = os.listdir()
+    for file in files:
+        if file.endswith('.csv'):
+            os.remove(file)
     
     os.chdir('..\\..')
     if not os.path.exists('results_xpsnr'):
@@ -221,15 +223,17 @@ def clear_csv_files():
         os.chdir('..')
         return
     os.chdir('profiling')
-    if os.path.exists('Full_XPSNR_profiling.csv'):
-        os.remove('Full_XPSNR_profiling.csv')
+    files = os.listdir()
+    for file in files:
+        if file.endswith('.csv'):
+            os.remove(file)
     os.chdir('..\\..')
 
-def calculate_full_profiling_average(type):
+def calculate_full_profiling_average(type, video_name):
     folder = 'results_' + type +'\\profiling'
     os.chdir(folder)
     average = 0
-    with open('full_' + type + '_profiling.csv', 'r') as csvfile:
+    with open(f'full_{type}_{video_name}_profiling.csv', 'r') as csvfile:
         reader = csv.reader(csvfile)
         average = 0
         rows = list(reader)
@@ -238,16 +242,31 @@ def calculate_full_profiling_average(type):
             if len(row) > 0:
                 average += float(row[-1])
         average /= len(rows)
-    with open('full_' + type + '_profiling.csv', 'a') as csvfile:
+    with open(f'full_{type}_{video_name}_profiling.csv', 'a') as csvfile:
         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-        writer.writerow(['Average', '' , '', average])
+        writer.writerow(['Average', average])
 
     os.chdir('..\\..')
 
-def profiling_precentage_xpsnr_functions():
+def calculate_function_percentage(VQM_type :str, row_dict :dict, header_row:list) -> list:
+    row = []
+    if (VQM_type == 'xpsnr'):
+        row.append(str(round(float(row_dict['init']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
+        row.append(str(round(float(row_dict['uninit']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
+        row.append(str(round(float(row_dict['query_formats']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
+        row.append(str(round(float(row_dict['config_input_ref']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
+        row.append(str(round(float(row_dict['config_output']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
+        row.append(str(round(float(row_dict['calcSquaredErrorAndWeight']) / float(row_dict['getWSSE']) * 100, 4)) + '%')
+        row.append(str(round(float(row_dict['getWSSE']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
+        row.append('100%')
+        return row
+    else: # psnr profiling is not needef 
+        pass
+
+def profiling_precentage_xpsnr_functions(video_name):
     time_list = {}
     os.chdir('results_xpsnr\\profiling')
-    with open('full_xpsnr_profiling.csv', 'r', newline='') as csvfile:
+    with open(f'full_xpsnr_{video_name}_profiling.csv', 'r', newline='') as csvfile:
         reader = csv.reader(csvfile, quoting=csv.QUOTE_ALL)
         for row in reader:
             if row == []:
@@ -255,12 +274,12 @@ def profiling_precentage_xpsnr_functions():
             if row[0] == 'file name' or row[0] == 'Average':
                 continue
             file_name = row[0].split('.')[0]
-            diff = row[3]
+            diff = row[1]
             time_list[file_name] = float(diff)
     new_file_rows = []
     header_row = []
     header_row.append('file name')
-    with open('xpsnr_functions_profiling.csv', 'r', newline='') as csvfile:
+    with open(f'xpsnr_{video_name}_functions_profiling.csv', 'r', newline='') as csvfile:
         reader = csv.reader(csvfile, quoting=csv.QUOTE_ALL)
         for row in reader:
             if row[0] == 'file name':
@@ -271,12 +290,38 @@ def profiling_precentage_xpsnr_functions():
                 continue
             video_row = [row[0].split('.')[0]]
             video_name = video_row[0]
+            row_dict = {}
             for i in range(1, len(row)):
                 time  = float(row[i].split('[')[1].split(',')[0])
                 counter = float(row[i].split('[')[1].split(',')[1].split(']')[0])
-                video_row.append(str(time * counter / time_list[video_name] * 100) + '%')
+                total_time = time * counter
+                
+                row_dict[header_row[i]] = total_time
+
+            video_row += calculate_function_percentage('xpsnr', row_dict, header_row)
             new_file_rows.append(video_row)
-    with open('functions_profiling_percentage.csv', 'w', newline='') as csvfile:
+    with open(f'functions_{video_name}_profiling_percentage.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
         writer.writerows(new_file_rows)
     os.chdir('..\\..')
+
+def calculate_do_psnr_xpsnr(VQM_type : str, result_name :str) -> int :
+    with open(result_name, 'r') as result_file:
+            # check if lines starts with '******'
+            results_lines = result_file.readlines()
+            profiling_lines = []
+            time_sum =  0
+            do_psnr_lines = []
+            for line in results_lines:
+                if line.endswith('******\n') or line.endswith('******'):
+                    line_split = line.split(': ')
+                    key = line_split[0].split('******')[1]
+                    data = float(line_split[2].split(' ')[0])
+                    if key != f'do_{VQM_type}':
+                        continue
+                    do_psnr_lines.append(line)
+            for line in do_psnr_lines:
+                line_split = line.split(': ')
+                data = float(line_split[2].split(' ')[0])
+                time_sum += data
+    return time_sum

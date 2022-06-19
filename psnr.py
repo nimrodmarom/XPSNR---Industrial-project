@@ -70,6 +70,7 @@ def calculate_psnr(original, encoded, resolution, frames, original_bitdepth, enc
     i = 1
     for frame in range(frames):
         original_y, original_u, original_v = original_video.read_frame()
+
         encoded_y, encoded_u, encoded_v = encoded_video.read_frame()
 
         psnr_y, mse_y = psnr_channel(original_y, encoded_y, resolution, MAX_VALUE)

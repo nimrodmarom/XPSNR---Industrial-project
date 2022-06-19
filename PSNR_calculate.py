@@ -2,11 +2,11 @@ from unittest import result
 from functions_for_script import *
 
 
-def profiling_functions(type):
+def profiling_functions(type, video_name):
     os.chdir(f'results_{type}\\profiling')
     # delete csv file if exists
-    if os.path.exists(f'{type}_functions_profiling.csv'):
-        os.remove(f'{type}_functions_profiling.csv')
+    if os.path.exists(f'{type}_{video_name}_functions_profiling.csv'):
+        os.remove(f'{type}_{video_name}_functions_profiling.csv')
     profiling_functions_rows = []
     for file in os.listdir():
         function_dict = {}
@@ -29,65 +29,51 @@ def profiling_functions(type):
             profiling_functions_rows.append(profiling_functions_row)
                            
             os.remove(file)
-    with open(f'{type}_functions_profiling.csv', 'w', newline='') as csvfile:
+    with open(f'{type}_{video_name}_functions_profiling.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-        if os.stat(f'{type}_functions_profiling.csv').st_size == 0:
+        if os.stat(f'{type}_{video_name}_functions_profiling.csv').st_size == 0:
             writer.writerow(['file name'] + [[str(key) + ' average time'] + [str(key) + ' counter'] for key in function_dict])
         writer.writerows(profiling_functions_rows)
     os.chdir('..\\..')
 
+
+def calcualte_full_psnr_xpsnr_time(file :str, VQM_type :str , result_name :str, profiling_file :str, video_name :str):
+    os.chdir(f'results_{VQM_type}\\profiling')
+    with open(f'full_{VQM_type}_{video_name}_profiling.csv', 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+        # check if csvfile is empty:
+        if os.stat(f'full_{VQM_type}_{video_name}_profiling.csv').st_size == 0:
+            writer.writerow(['file name','calculation time for {VQM_type} (secs)'])
+        calculation_time = calculate_do_psnr_xpsnr(VQM_type = VQM_type, result_name = profiling_file)
+        writer.writerow([file, calculation_time])
+    os.chdir('..\\..')
+
 def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
-    print(os.getcwd())
     if not os.path.exists('results_xpsnr'):
             os.mkdir('results_xpsnr')
     os.chdir('results_xpsnr')
     if not os.path.exists('profiling'):
             os.mkdir('profiling')
-    os.chdir('profiling')
+    os.chdir('..')
+    os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_xpsnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
 
-    with open('full_xpsnr_profiling.csv', 'a', newline='') as csvfile:
-        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-        # check if csvfile is empty:
-        if os.stat('full_xpsnr_profiling.csv').st_size == 0:
-            writer.writerow(['file name', 'start time', 'end time', 'different (seconds)'])
-        os.chdir('..\\..')
-        start_time = time.time()
-        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_xpsnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
-        end_time = time.time()
-        os.chdir('results_xpsnr\\profiling')
-
-        diff = end_time - start_time
-        writer.writerow([file ,start_time, end_time, diff])
-
-    os.chdir('..\\..')
     if not os.path.exists('results_psnr'):
             os.mkdir('results_psnr')
     os.chdir('results_psnr')
     if not os.path.exists('profiling'):
             os.mkdir('profiling')
-    os.chdir('profiling')
-    with open('full_psnr_profiling.csv', 'a', newline='') as csvfile:
-        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-        if os.stat('full_psnr_profiling.csv').st_size == 0:
-            writer.writerow(['file name', 'start time', 'end time', 'different (seconds)'])
-        os.chdir('..\\..')
-        start_time = time.time()
-        os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]psnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_psnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
-        end_time = time.time()
-        os.chdir('results_psnr\\profiling')
-        diff = end_time - start_time
-        writer.writerow([file, start_time, end_time, diff])
-    os.chdir('..\\..')
+    os.chdir('..')
+    os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]psnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_psnr\\{4} 2>&1".format(current_folder, original, file , all_data_name, result_name))
             
 
-def handle_profiling():
-    calculate_full_profiling_average('xpsnr')
-    calculate_full_profiling_average('psnr')
-    profiling_functions('psnr')
-    profiling_functions('xpsnr')
-    profiling_precentage_xpsnr_functions()
+def handle_profiling(video_name):
+    calculate_full_profiling_average('xpsnr', video_name)
+    calculate_full_profiling_average('psnr', video_name)
+    profiling_functions('psnr', video_name)
+    profiling_functions('xpsnr', video_name)
+    profiling_precentage_xpsnr_functions(video_name)
 
-def calculate_XPSNR_PSNR_files(VQM_type: str, result_name: str, all_data_name: str):   
+def calculate_XPSNR_PSNR_files(VQM_type: str, result_name: str, all_data_name: str, file : str, video_name : str):   
     os.chdir('results_' + VQM_type)
     averge_value = 0
     bit_rate_value = 0
@@ -147,16 +133,17 @@ def calculate_XPSNR_PSNR_files(VQM_type: str, result_name: str, all_data_name: s
             if bit_rate_line[i].split(': ')[0] == 'bitrate':
                 bit_rate_value = bit_rate_line[i].split(': ')[1].split(' ')[0]
                 break
-    with open(result_name, 'w') as result:
+    
+    last_index = result_name.index('.')
+    new_result_name = result_name[0 : last_index] + f'__{bit_rate_value}.txt'       
+    with open(new_result_name, 'w') as result:
         result.write(f'bitrate: {bit_rate_value}')
         result.write(f'\n{VQM_type} average: {averge_value}')
-    last_index = result_name.index('.')
-    new_result_name = result_name[0 : last_index] + f'__{bit_rate_value}.txt'
-    if (os.path.exists(new_result_name)):
-        os.remove(new_result_name)
-    os.rename(result_name, new_result_name)
-
     os.chdir('..')
+    calcualte_full_psnr_xpsnr_time(file, VQM_type, result_name, profiling_file, video_name) 
+    os.remove(f'results_{VQM_type}\\{result_name}')
+
+    
 
 def make_folders_for_video():
     if not os.path.exists('all_data_psnr'):
@@ -219,9 +206,9 @@ def handle_video(video_name: str):
         all_data_name = 'all_data_' + file.split('.')[0] + '.txt'
         result_name = 'results_' + file.split('.')[0] + '.txt'
         call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name)
-        calculate_XPSNR_PSNR_files("psnr", result_name=result_name, all_data_name=all_data_name)
-        calculate_XPSNR_PSNR_files("xpsnr", result_name=result_name, all_data_name=all_data_name)
-    handle_profiling()
+        calculate_XPSNR_PSNR_files("psnr", result_name=result_name, all_data_name=all_data_name, file=file, video_name = video_name)
+        calculate_XPSNR_PSNR_files("xpsnr", result_name=result_name, all_data_name=all_data_name, file=file, video_name = video_name)
+    handle_profiling(video_name)
     os.chdir("..")
 
 def produce_psnr_axis(directory_files, all_codecs, different_codecs):
@@ -333,15 +320,18 @@ def create_graph(video_name: str, different_codecs: str):
     os.chdir('..')
 
 def produce_database():
-    os.chdir("..\\videos")
+    os.chdir("videos")
 
     for folder_name in os.listdir():
         print(os.getcwd())
         if not os.path.isdir(folder_name):
             continue
         handle_video(folder_name)
+    
+    os.chdir("..")
 
 def produce_graphs():
+    os.chdir("videos")
     for folder_name in os.listdir():
         if not os.path.isdir(folder_name):
             continue
@@ -364,6 +354,7 @@ def produce_graphs():
         create_graph(folder_name, different_codecs)
     
     produce_PDF()
+    os.chdir("..")
 
 def produce_PDF():
     image_lst = []
@@ -383,6 +374,8 @@ def produce_PDF():
     image_lst[0].save(pdf_path, "PDF", resoultion = 100.0, save_all=True, append_images=image_lst[1:])
 
 def produce_time_histogram_for_specific_video():
+    os.chdir("videos")
+
     os.chdir("Aerial_p30")
     original, directory_files = get_videos()
     test_video = directory_files[0]
@@ -391,35 +384,14 @@ def produce_time_histogram_for_specific_video():
     result_name = 'temp_result.txt'
     running_times = []
     for i in range (10):
-        start_time = time.time()
         os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]psnr=stats_file=\"/data/frame_out/{3}\" -f null - > {4} 2>&1".format(current_folder, original, test_video, all_data_name, result_name))
-        end_time = time.time()
-        diff = end_time - start_time
-        print (diff)
-        profiling_file = 'profiling temp.txt'
-        with open(result_name, 'r') as result_file:
-            # check if lines starts with '******'
-            results_lines = result_file.readlines()
-            with open(profiling_file, 'w') as profiling:
-                profiling.truncate()
-            profiling_lines = []
-            time_sum =  0
-            do_psnr_lines = []
-            for line in results_lines:
-                if line.endswith('******\n') or line.endswith('******'):
-                    line_split = line.split(': ')
-                    key = line_split[0].split('******')[1]
-                    data = float(line_split[2].split(' ')[0])
-                    # data_t is a tupple of (data, count)
-                    # count++ if the key is already in the dictionary
-                    if key != 'do_psnr':
-                        continue
-                    do_psnr_lines.append(line)
-            for line in do_psnr_lines:
-                line_split = line.split(': ')
-                data = float(line_split[2].split(' ')[0])
-                time_sum += data
+        profiling_file = 'profiling_temp.txt'
+        time_sum = calculate_do_psnr_xpsnr('psnr', result_name)
         running_times.append (time_sum)
+
+    # remove temp files
+    os.remove(result_name)
+    os.remove(profiling_file)
 
     plt.style.use('ggplot')
     plt.hist(running_times, bins=10)
@@ -427,41 +399,23 @@ def produce_time_histogram_for_specific_video():
 
     running_times = []
     for i in range (10):
-        start_time = time.time()
         os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > {4} 2>&1".format(current_folder, original, test_video, all_data_name, result_name))
-        end_time = time.time()
-        diff = end_time - start_time
-        print (diff)
-        profiling_file = 'profiling temp.txt'
-        with open(result_name, 'r') as result_file:
-            # check if lines starts with '******'
-            results_lines = result_file.readlines()
-            with open(profiling_file, 'w') as profiling:
-                profiling.truncate()
-            profiling_lines = []
-            time_sum =  0
-            do_psnr_lines = []
-            for line in results_lines:
-                if line.endswith('******\n') or line.endswith('******'):
-                    line_split = line.split(': ')
-                    key = line_split[0].split('******')[1]
-                    data = float(line_split[2].split(' ')[0])
-                    # data_t is a tupple of (data, count)
-                    # count++ if the key is already in the dictionary
-                    if key != 'do_psnr':
-                        continue
-                    do_psnr_lines.append(line)
-            for line in do_psnr_lines:
-                line_split = line.split(': ')
-                data = float(line_split[2].split(' ')[0])
-                time_sum += data
+        profiling_file = 'profiling_temp.txt'
+        time_sum = calculate_do_psnr_xpsnr('xpsnr', result_name)
         running_times.append (time_sum)
 
     plt.style.use('ggplot')
     plt.hist(running_times, bins=10)
     plt.show()
 
+    os.remove(result_name)
+    os.remove(profiling_file)
+    
+
+    os.chdir("..")
+
 def produce_histogram():
+    os.chdir("videos")
     plt.style.use('seaborn-deep')
     psnr_times = []
     xpsnr_times = []
@@ -475,13 +429,13 @@ def produce_histogram():
         for sub_folder in os.listdir(): 
             if os.path.isdir(sub_folder):
                 if sub_folder == 'results_psnr':
-                    psnr_value = get_time_from_file(sub_folder, 'psnr')
+                    psnr_value = get_time_from_file(folder_name, sub_folder, 'psnr')
                     if (psnr_value != -1):
                         index += 1
                         video_names[index] = folder_name
                         psnr_times.append(float(psnr_value))
                 if sub_folder == 'results_xpsnr':
-                    xpsnr_value = get_time_from_file(sub_folder, 'xpsnr')
+                    xpsnr_value = get_time_from_file(folder_name, sub_folder, 'xpsnr')
                     if (xpsnr_value != -1):
                         xpsnr_times.append(float(xpsnr_value))
         os.chdir('..')
@@ -524,17 +478,17 @@ def produce_histogram():
     #save as pdf
     plt.savefig('histogram.pdf', bbox_inches='tight')
 
-    produce_time_histogram_for_specific_video()
+    os.chdir("..")
 
 def main():
-
+    os.chdir("..")
+    
     # produce_database()
     
     # produce_graphs()        
 
     # produce_histogram()
 
-    os.chdir("..\\videos")
     produce_time_histogram_for_specific_video()
 
 
