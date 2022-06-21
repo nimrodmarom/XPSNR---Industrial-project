@@ -383,33 +383,28 @@ def produce_time_histogram_for_specific_video():
     all_data_name = 'temp_data.txt'
     result_name = 'temp_result.txt'
     running_times = []
-    for i in range (10):
+    for i in range (500):
         os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]psnr=stats_file=\"/data/frame_out/{3}\" -f null - > {4} 2>&1".format(current_folder, original, test_video, all_data_name, result_name))
-        profiling_file = 'profiling_temp.txt'
         time_sum = calculate_do_psnr_xpsnr('psnr', result_name)
         running_times.append (time_sum)
 
-    # remove temp files
     os.remove(result_name)
-    os.remove(profiling_file)
 
     plt.style.use('ggplot')
     plt.hist(running_times, bins=10)
-    plt.show()
+    plt.savefig('psnr_time_histogram.png')
 
     running_times = []
-    for i in range (10):
+    for i in range (500):
         os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > {4} 2>&1".format(current_folder, original, test_video, all_data_name, result_name))
-        profiling_file = 'profiling_temp.txt'
         time_sum = calculate_do_psnr_xpsnr('xpsnr', result_name)
         running_times.append (time_sum)
 
     plt.style.use('ggplot')
     plt.hist(running_times, bins=10)
-    plt.show()
+    plt.savefig('xpsnr_time_histogram.png')
 
     os.remove(result_name)
-    os.remove(profiling_file)
     
 
     os.chdir("..")
@@ -490,7 +485,6 @@ def main():
     # produce_histogram()
 
     produce_time_histogram_for_specific_video()
-
-
+    
 if __name__ == "__main__":
     main()

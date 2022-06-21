@@ -8,7 +8,7 @@ import math
 
 
 class WPSNR(object):
-    def __init__(self, filename, resolution, bitdepth):
+    def __init__(self, filename, resolution, bitdepth, conv):
         self.file = open(filename, 'rb')
         self.width, self.height = resolution
         self.u_width = self.width // 2
@@ -16,6 +16,7 @@ class WPSNR(object):
         self.u_height = self.height // 2
         self.v_height = self.height // 2
         self.bitdepth = bitdepth
+        self.conv = conv
 
     def read_frame(self):
         Y = self.read_channel(self.height, self.width)
@@ -57,7 +58,7 @@ def calculate_mse(original, encoded, weight_k_array, N,  width, height):
         diff *= weight_k_array[c]
         sum += diff
         c += 1
-    return sum
+    return sum/(width * height)
 
 
 def wpsnr_channel(original, encoded, MAX_VALUE : int, weight_k_array, N, width, height):
@@ -78,22 +79,22 @@ def calculate_h_k(encoded_conv):
     return sum
 
 def calculate_wpsnr_weight_k_array(encoded_video, encoded, alpha_pic, beta, N, width, height):
-    conv = [-1, -2, -1, -2, 12, -2, -1, -2, -1]
     # initialize to np array to empty
     weight_k_array = np.array([])
 
     for i in range(0, height * width, N ** 2):
         encoded_video_block = encoded[i : i + N ** 2]
         # encoded_cov is np.convolve of encoded_video_block and conv
-        encoded_conv = np.convolve(encoded_video_block, conv)
+        encoded_conv = np.convolve(encoded_video_block, encoded_video.conv)
         alpha_k = max((2 ** (encoded_bitdepth - 6)) ** 2, ((1 / ( N ** 2)) * calculate_h_k(encoded_conv)) ** 2)
         weight_k = (alpha_pic / alpha_k) ** beta
         weight_k_array = np.append(weight_k_array, weight_k)
     return weight_k_array
 
-def calculate_wpsnr(original, encoded, resolution, frames, original_bitdepth, encoded_bitdepth):
-    original_video = WPSNR(original, resolution, original_bitdepth)
-    encoded_video = WPSNR(encoded, resolution, encoded_bitdepth)
+def calculate_wpsnr(original, encoded, resolution, frames, original_bitdepth, encoded_bitdepth):  
+    conv = [-1, -2, -1, -2, 12, -2, -1, -2, -1]
+    original_video = WPSNR(original, resolution, original_bitdepth, conv)
+    encoded_video = WPSNR(encoded, resolution, encoded_bitdepth, conv)
     
     MAX_VALUE  = 2 ** 8 - 1
 
