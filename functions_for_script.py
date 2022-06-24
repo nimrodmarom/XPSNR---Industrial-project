@@ -268,19 +268,13 @@ def calculate_function_percentage(VQM_type: str, row_dict: dict, header_row: lis
         row.append(
             str(round(float(row_dict['init']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
         row.append(str(
-            round(float(row_dict['uninit']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
-        row.append(str(round(
-            float(row_dict['query_formats']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
-        row.append(str(round(float(
-            row_dict['config_input_ref']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
-        row.append(str(round(
-            float(row_dict['config_output']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
-        row.append(str(
             round(float(row_dict['ff_framesync_dualinput_get']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
         row.append(str(
             round(float(row_dict['allocs']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
         row.append(str(round(float(
             row_dict['calcSquaredErrorAndWeight']) / float(row_dict['getWSSE']) * 100, 4)) + '%')
+        row.append(str(round(float(
+            row_dict['calcSquaredError']) / float(row_dict['getWSSE']) * 100, 4)) + ' %')
         row.append(str(
             round(float(row_dict['getWSSE']) / float(row_dict['do_xpsnr']) * 100, 4)) + '%')
         row.append(str(
@@ -358,3 +352,21 @@ def calculate_do_psnr_xpsnr(VQM_type: str, result_name: str) -> int:
             data = float(line_split[2].split(' ')[0])
             time_sum += data
     return time_sum
+
+
+def produce_time_histogram(VQM_type: str, current_folder: str, original: str, test_video: str, all_data_name: str, result_name: str):
+    running_times = []
+    for i in range(10):
+        os.system(
+            f"docker run -v \"{current_folder}:/data/orig\" -v \"{current_folder}:/data/comp\" -v \"{current_folder}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{original}\"  -i \"/data/comp/{test_video}\" -threads 1 -lavfi [0:v][1:v]{VQM_type}=stats_file=\"/data/frame_out/{all_data_name}\" -f null - > {result_name} 2>&1")
+        time_sum = calculate_do_psnr_xpsnr(f'{VQM_type}', result_name)
+        running_times.append(time_sum)
+
+    plt.figure()
+    plt.style.use('ggplot')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Count')
+    plt.hist(running_times, bins=5)
+    plt.savefig(f'{VQM_type}_time_histogram.pdf')
+    plt.close()
+    os.remove(result_name)
