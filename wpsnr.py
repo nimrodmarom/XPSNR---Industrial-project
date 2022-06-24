@@ -1,10 +1,11 @@
 """
 https://github.com/arthurcerveira/PSNR
 """
-
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import math
+from scipy import signal
 
 
 class WPSNR(object):
@@ -32,36 +33,40 @@ class WPSNR(object):
         if self.bitdepth == 8:
             raw = self.file.read(channel_len)
             channel_8bits = np.frombuffer(raw, dtype=np.uint8)
-            #  channel = np.array(channel_8bits, dtype=np.uint16) << 2  # Convert 8bits to 10 bits 
+            #  channel = np.array(channel_8bits, dtype=np.uint16) << 2  # Convert 8bits to 10 bits
             channel = channel_8bits
 
         elif self.bitdepth == 10:
-            raw = self.file.read(2 * channel_len)  # Read 2 bytes for every pixel
+            # Read 2 bytes for every pixel
+            raw = self.file.read(2 * channel_len)
             channel = np.frombuffer(raw, dtype=np.uint16)
 
-        # channel = channel.reshape(shape)
+        channel = channel.reshape(shape)
 
         return channel
 
     def close(self):
         self.file.close()
 
+
 def calculate_mse(original, encoded, weight_k_array, N,  width, height):
     c = 0
-    sum  = 0
-    for i in range(0, width * height, N ** 2):
-        diff = 0
-        for j in range(i, i + N**2):
-            if(j >= width * height):
-                break
-            diff += (original[j] - encoded[j]) ** 2
-        diff *= weight_k_array[c]
-        sum += diff
-        c += 1
+    sum = 0
+    for i in range(0, height, N):
+        for j in range(0, width, N):
+            diff = 0
+            originial_block = original[i: i + N, j: j + N]
+            encoded_block = encoded[i: i + N, j: j + N]
+            for k in range(len(originial_block)):
+                for l in range(len(originial_block[0])):
+                    diff += (originial_block[k, l] - encoded_block[k, l]) ** 2
+            diff *= weight_k_array[c]
+            sum += diff
+            c += 1
     return sum/(width * height)
 
 
-def wpsnr_channel(original, encoded, MAX_VALUE : int, weight_k_array, N, width, height):
+def wpsnr_channel(original, encoded, MAX_VALUE: int, weight_k_array, N, width, height):
     # Convert frames to double
     original = np.array(original, dtype=np.double)
     encoded = np.array(encoded, dtype=np.double)
@@ -71,32 +76,46 @@ def wpsnr_channel(original, encoded, MAX_VALUE : int, weight_k_array, N, width, 
     psnr = 10 * np.log10((MAX_VALUE * MAX_VALUE) / mse)
     return psnr, mse
 
+
 def calculate_h_k(encoded_conv):
     imx = len(encoded_conv)
+    imy = len(encoded_conv[0])
     sum = 0
     for i in range(imx):
-            sum += abs(encoded_conv[i])
+        for j in range(imy):
+            sum += abs(encoded_conv[i][j])
     return sum
+
 
 def calculate_wpsnr_weight_k_array(encoded_video, encoded, alpha_pic, beta, N, width, height):
     # initialize to np array to empty
     weight_k_array = np.array([])
 
-    for i in range(0, height * width, N ** 2):
-        encoded_video_block = encoded[i : i + N ** 2]
-        # encoded_cov is np.convolve of encoded_video_block and conv
-        encoded_conv = np.convolve(encoded_video_block, encoded_video.conv)
-        alpha_k = max((2 ** (encoded_bitdepth - 6)) ** 2, ((1 / ( N ** 2)) * calculate_h_k(encoded_conv)) ** 2)
-        weight_k = (alpha_pic / alpha_k) ** beta
-        weight_k_array = np.append(weight_k_array, weight_k)
+    for i in range(0, height, N):
+        for j in range(0, width, N):
+            encoded_video_block = encoded[i: i + N, j: j + N]
+            encoded_conv = signal.convolve2d(
+                encoded_video_block, encoded_video.conv, boundary='symm', mode='same')
+            alpha_k = max((2 ** (encoded_bitdepth - 6)) ** 2,
+                          ((1 / (N ** 2)) * calculate_h_k(encoded_conv)) ** 2)
+            weight_k = (alpha_pic / alpha_k) ** beta
+            weight_k_array = np.append(weight_k_array, weight_k)
     return weight_k_array
 
-def calculate_wpsnr(original, encoded, resolution, frames, original_bitdepth, encoded_bitdepth):  
-    conv = [-1, -2, -1, -2, 12, -2, -1, -2, -1]
+
+def calculate_wpsnr(original, encoded, resolution, frames, original_bitdepth, encoded_bitdepth):
+    conv = [[-1, -2, -1], [-2, 12, -2], [-1, -2, -1]]
+    # make conv as numpy 3x3 array
+    conv = np.array(conv)
+
+    plt.imshow(conv)
+
+    plt.colorbar()
+
     original_video = WPSNR(original, resolution, original_bitdepth, conv)
     encoded_video = WPSNR(encoded, resolution, encoded_bitdepth, conv)
-    
-    MAX_VALUE  = 2 ** 8 - 1
+
+    MAX_VALUE = 2 ** 8 - 1
 
     wpsnr_y_array = list()
     wpsnr_u_array = list()
@@ -104,40 +123,48 @@ def calculate_wpsnr(original, encoded, resolution, frames, original_bitdepth, en
     mse_array = list()
     i = 1
 
-
     for frame in range(frames):
         original_y, original_u, original_v = original_video.read_frame()
         encoded_y, encoded_u, encoded_v = encoded_video.read_frame()
 
-        alpha_pic = (2 ** encoded_bitdepth) * math.sqrt(3840 * 2160 / (encoded_video.width * encoded_video.height))
+        alpha_pic = (2 ** encoded_bitdepth) * math.sqrt(3840 *
+                                                        2160 / (encoded_video.width * encoded_video.height))
 
         beta = 0.5
-        N = round(128 * math.sqrt(encoded_video.width * encoded_video.height / (3840 * 2160)))
+        N = round(128 * math.sqrt(encoded_video.width *
+                  encoded_video.height / (3840 * 2160)))
 
-        weight_k_array = calculate_wpsnr_weight_k_array(encoded_video, encoded_y, alpha_pic, beta, N, encoded_video.width, encoded_video.height)
+        weight_k_array = calculate_wpsnr_weight_k_array(
+            encoded_video, encoded_y, alpha_pic, beta, N, encoded_video.width, encoded_video.height)
 
-        wpsnr_y, mse_y = wpsnr_channel(original_y, encoded_y, MAX_VALUE, weight_k_array, N, encoded_video.width, encoded_video.height)
+        wpsnr_y, mse_y = wpsnr_channel(
+            original_y, encoded_y, MAX_VALUE, weight_k_array, N, encoded_video.width, encoded_video.height)
         mse_y = mse_y.round(2)
         wpsnr_y = wpsnr_y.round(2)
         wpsnr_y_array.append(wpsnr_y)
 
-        N = round(128 * math.sqrt(encoded_video.u_width * encoded_video.u_height / (3840*2160)))
-        weight_k_array = calculate_wpsnr_weight_k_array(encoded_video, encoded_u, alpha_pic, beta, N, encoded_video.u_width, encoded_video.u_height)
+        # N = round(128 * math.sqrt(encoded_video.u_width *
+        #           encoded_video.u_height / (3840*2160)))
+        # weight_k_array = calculate_wpsnr_weight_k_array(
+        #    encoded_video, encoded_u, alpha_pic, beta, N, encoded_video.u_width, encoded_video.u_height)
 
-        wpsnr_u, mse_u = wpsnr_channel(original_u, encoded_u, MAX_VALUE, weight_k_array, N, encoded_video.u_width, encoded_video.u_height)
+        wpsnr_u, mse_u = wpsnr_channel(
+            original_u, encoded_u, MAX_VALUE, weight_k_array, N, encoded_video.u_width, encoded_video.u_height)
         mse_u = mse_u.round(2)
         wpsnr_u = wpsnr_u.round(2)
         wpsnr_u_array.append(wpsnr_u)
 
-        N = round(128 * math.sqrt(encoded_video.v_width * encoded_video.v_height / (3840*2160)))
-        weight_k_array = calculate_wpsnr_weight_k_array(encoded_video, encoded_v, alpha_pic, beta, N, encoded_video.v_width, encoded_video.v_height)
+        # N = round(128 * math.sqrt(encoded_video.v_width *
+        #          encoded_video.v_height / (3840*2160)))
+        # weight_k_array = calculate_wpsnr_weight_k_array(
+        #    encoded_video, encoded_v, alpha_pic, beta, N, encoded_video.v_width, encoded_video.v_height)
 
-
-        wpsnr_v, mse_v = wpsnr_channel(original_v, encoded_v, MAX_VALUE, weight_k_array, N, encoded_video.v_width, encoded_video.v_height)
+        wpsnr_v, mse_v = wpsnr_channel(
+            original_v, encoded_v, MAX_VALUE, weight_k_array, N, encoded_video.v_width, encoded_video.v_height)
         mse_v = mse_v.round(2)
         wpsnr_v = wpsnr_v.round(2)
         wpsnr_v_array.append(wpsnr_v)
-        
+
         mse = (4 * mse_y + mse_u + mse_v) / 6  # Weighted MSE
         mse = mse.round(2)
         mse_array.append(mse)
@@ -148,10 +175,9 @@ def calculate_wpsnr(original, encoded, resolution, frames, original_bitdepth, en
         # print to file 'try.txt'
         os.chdir('wpsnr_values')
         with open(f'{encoded.split(".")[0]}_python_psnr_out.txt', 'a') as f:
-            f.write (f'n:{i}: mse_avg:{mse} mse_y:{mse_y} mse_u:{mse_u} mse_v:{mse_v}, wpsnr_avg:{wpsnr} wpsnr_y:{wpsnr_y}, wpsnr_u:{wpsnr_u} wpsnr_v:{wpsnr_v}\n')
+            f.write(f'n:{i}: mse_avg:{mse} mse_y:{mse_y} mse_u:{mse_u} mse_v:{mse_v}, wpsnr_avg:{wpsnr} wpsnr_y:{wpsnr_y}, wpsnr_u:{wpsnr_u} wpsnr_v:{wpsnr_v}\n')
         os.chdir('..')
 
-        
         i += 1
     # Close YUV streams
     original_video.close()
@@ -168,6 +194,7 @@ def calculate_wpsnr(original, encoded, resolution, frames, original_bitdepth, en
 
     return wpsnr_y, wpsnr_u, wpsnr_v, wpsnr_yuv
 
+
 def covert_videos_to_yuv(video_original, video_distorted):
     """
     Convert videos to YUV format
@@ -176,8 +203,11 @@ def covert_videos_to_yuv(video_original, video_distorted):
     yuv_distorted_video = video_distorted.split('.')[0] + '.yuv'
     #os.system(f"ffmpeg -i {video_original} {yuv_original_video}")
     #os.system(f"ffmpeg -i {video_distorted} {yuv_distorted_video}")
-    os.system(f"ffmpeg -i {video_original} -c:v rawvideo -pix_fmt yuv420p {yuv_original_video}")
-    os.system(f"ffmpeg -i {video_distorted} -c:v rawvideo -pix_fmt yuv420p {yuv_distorted_video}")
+    os.system(
+        f"ffmpeg -i {video_original} -c:v rawvideo -pix_fmt yuv420p {yuv_original_video}")
+    os.system(
+        f"ffmpeg -i {video_distorted} -c:v rawvideo -pix_fmt yuv420p {yuv_distorted_video}")
+
 
 def delete_converted_videos(original_video, encoded_video):
     """
@@ -187,7 +217,6 @@ def delete_converted_videos(original_video, encoded_video):
     yuv_encoded_video = encoded_video.split('.')[0] + '.yuv'
     os.remove(yuv_original_video)
     os.remove(yuv_encoded_video)
-
 
 
 if __name__ == "__main__":
@@ -217,7 +246,7 @@ if __name__ == "__main__":
     os.chdir('..')
 
     wpsnr_y, wpnsr_u, wpsnr_v, wpsnr_yuv = calculate_wpsnr(
-        original_video, encoded_video, resolution, 
+        original_video, encoded_video, resolution,
         frames, original_bitdepth, encoded_bitdepth
     )
 
