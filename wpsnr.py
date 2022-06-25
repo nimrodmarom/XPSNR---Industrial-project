@@ -8,6 +8,9 @@ import os
 import math
 from scipy import signal
 
+video_name = 'Aerial_p30'
+original_video_input = 'Aerial_p30__1920x1080__420__8__30__100.mp4'
+encoded_video_input = 'Aerial_p30__1920x1080__420__8__30__100__x264__hq__medium__natural__1000.mp4'
 
 class WPSNR(PSNR):
     def __init__(self, filename, resolution, bitdepth, conv):
@@ -163,9 +166,9 @@ def calculate_wpsnr(original, encoded, resolution, frames, original_bitdepth, en
 
 
 if __name__ == "__main__":
-    os.chdir('..\\videos\\Aerial_p30')
-    original_video = 'Aerial_p30__1920x1080__420__8__30__100.mp4'
-    encoded_video = 'Aerial_p30__1920x1080__420__8__30__100__x264__hq__medium__natural__1000.mp4'
+    os.chdir(f'..\\videos\\{video_name}')
+    original_video = f'{original_video_input}'
+    encoded_video = f'{encoded_video_input}'
     covert_videos_to_yuv(original_video, encoded_video)
     original_video = original_video.split('.')[0] + '.yuv'
     encoded_video = encoded_video.split('.')[0] + '.yuv'

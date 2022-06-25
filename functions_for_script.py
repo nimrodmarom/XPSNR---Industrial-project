@@ -3,7 +3,13 @@ import os
 import csv
 from tracemalloc import start
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpl_patches
 import numpy as np
+from PIL import Image
+import time
+import typing
+import pandas as pd
+from unittest import result
 
 
 def move_videos_to_folders():
@@ -352,7 +358,7 @@ def calculate_do_psnr_xpsnr(VQM_type: str, result_name: str) -> int:
 
 def produce_time_histogram(VQM_type: str, current_folder: str, original: str, test_video: str, all_data_name: str, result_name: str):
     running_times = []
-    for i in range(10):
+    for i in range(500):
         os.system(
             f"docker run -v \"{current_folder}:/data/orig\" -v \"{current_folder}:/data/comp\" -v \"{current_folder}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{original}\"  -i \"/data/comp/{test_video}\" -threads 1 -lavfi [0:v][1:v]{VQM_type}=stats_file=\"/data/frame_out/{all_data_name}\" -f null - > {result_name} 2>&1")
         time_sum = calculate_do_psnr_xpsnr(f'{VQM_type}', result_name)

@@ -1,4 +1,3 @@
-from unittest import result
 from functions_for_script import *
 
 
@@ -345,10 +344,20 @@ def create_graph(video_name: str, different_codecs: str):
 
 def produce_database():
     os.chdir("videos")
+    for folder_name in os.listdir():
+        print(os.getcwd())
+        if not os.path.isdir(folder_name):
+            continue
+        handle_video(folder_name)
+
+    os.chdir("..")
+
+
+def produce_database_for_times_graph():
+    os.chdir("videos")
 
     running_xpsnr_times, running_psnr_times = {}, {}
     for folder_name in os.listdir():
-        print(os.getcwd())
         if not os.path.isdir(folder_name):
             continue
         running_xpsnr_times[folder_name] = []
@@ -407,7 +416,7 @@ def produce_PDF():
                 background.paste(png, mask=png.split()[3])
                 image_lst.append(background)
         os.chdir("..")
-    pdf_path = os.getcwd() + '\\' + 'report.pdf'
+    pdf_path = os.getcwd() + '\\' + 'xpsnr_psnr_results.pdf'
     image_lst[0].save(pdf_path, "PDF", resoultion=100.0,
                       save_all=True, append_images=image_lst[1:])
 
@@ -431,7 +440,7 @@ def produce_time_histogram_for_specific_video():
     os.chdir("..")
 
 
-def produce_histogram_from_dictionary(running_xpsnr_times, running_psnr_times):
+def produce_times_graph_from_dictionary(running_xpsnr_times, running_psnr_times):
     os.chdir("videos")
     plt.style.use('seaborn-deep')
     psnr_times = []
@@ -494,9 +503,78 @@ def produce_histogram_from_dictionary(running_xpsnr_times, running_psnr_times):
               fancybox=False, framealpha=0.7, bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0,
               handlelength=0, handletextpad=0)
     # save as pdf
-    plt.savefig('histogram.pdf', bbox_inches='tight')
+    plt.savefig('xpsnr_psnr_running_times.pdf', bbox_inches='tight')
 
     os.chdir("..")
+
+
+# def produce_histogram():
+#     os.chdir("videos")
+#     plt.style.use('seaborn-deep')
+#     psnr_times = []
+#     xpsnr_times = []
+#     video_names = {}
+#     index = 0
+#     for folder_name in os.listdir():  # all videos
+#         if not os.path.isdir(folder_name):
+#             continue
+
+#         os.chdir(folder_name)  # inside a video folder
+#         for sub_folder in os.listdir():
+#             if os.path.isdir(sub_folder):
+#                 if sub_folder == 'results_psnr':
+#                     psnr_value = get_time_from_file(
+#                         folder_name, sub_folder, 'psnr')
+#                     if (psnr_value != -1):
+#                         index += 1
+#                         video_names[index] = folder_name
+#                         psnr_times.append(float(psnr_value))
+#                 if sub_folder == 'results_xpsnr':
+#                     xpsnr_value = get_time_from_file(
+#                         folder_name, sub_folder, 'xpsnr')
+#                     if (xpsnr_value != -1):
+#                         xpsnr_times.append(float(xpsnr_value))
+#         os.chdir('..')
+
+#     N = index
+#     # make tupple out of psnr_times and xpsnr_times until N / 2
+#     psnr_times_tuple = tuple(psnr_times[:int(N)])
+#     xpsnr_times_tuple = tuple(xpsnr_times[:int(N)])
+
+#     ind = np.arange(N)  # the x locations for the groups
+#     width = 0.3       # the width of the bars
+
+#     fig, ax = plt.subplots()
+#     ax.bar(ind, psnr_times_tuple, width, color='purple')
+
+#     ax.bar(ind + width, xpsnr_times_tuple, width, color='orange')
+
+#     ax.set_ylabel('Time (s)')
+#     ax.set_xlabel('# Video')
+#     ax.set_title('Calculation time for each video')
+#     ax.set_xticks(ind + width / 2)
+#     ax.set_xticklabels(video_names.keys())
+#     handles = [mpl_patches.Rectangle((0, 0), 1, 1, fc="white", ec="white",
+#                                      lw=0, alpha=0)] * (N + 3)
+
+#     video_names_list = []
+#     video_names_list.append('Orange: XPSNR')
+#     video_names_list.append('Purple: PSNR')
+#     video_names_list.append(' ')
+
+#     index = 0
+#     for key in video_names.keys():
+#         index += 1
+#         # add to video_names_list the video name and the index
+#         video_names_list.append(f'{index}: {video_names[key]}')
+
+#     ax.legend(handles, video_names_list, fontsize='small',
+#               fancybox=False, framealpha=0.7, bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0,
+#               handlelength=0, handletextpad=0)
+#     # save as pdf
+#     plt.savefig('histogram.pdf', bbox_inches='tight')
+
+#     os.chdir("..")
 
 
 def main():
@@ -505,13 +583,13 @@ def main():
 
     # move_videos_to_folders()
 
-    # running_xpsnr_times, running_psnr_times = produce_database()
+    produce_database()
 
-    # produce_graphs()
+    produce_graphs()
 
-    # produce_histogram_from_dictionary(running_xpsnr_times, running_psnr_times)
+    produce_times_graph_from_dictionary(produce_database_for_times_graph)
 
-    # produce_time_histogram_for_specific_video()
+    produce_time_histogram_for_specific_video()
 
 
 if __name__ == "__main__":

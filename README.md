@@ -1,3 +1,5 @@
+# XPSNR - Industrial Project. Nimrod Marom & Ran Braschinsky
+
 1. PSNR_calculate.py:
    A script that creates the database of profiling, psnr/xpsnr running times and histograms as explained:
 
@@ -14,15 +16,15 @@
       a. "all_data" - contains files with information of the distorted video by frame
       b. "results" - contains conclusion of avg.PSNR/XPSNR and actual bit-rate of distorted video
       c. "profling" - a sub-folder inside results. contains 3 files which shows data for profiling for each codec.
-      Using the command: running_xpsnr_times, running_psnr_times = produce_database()
+      Using the command: produce_database()
 
    5. The script generates graph for each video, save in the video folder, name - "%video_name%psnr_graph.png" and "%video_name%xpsnr_graph.png"
    6. The script saves a PDF file named "report.pdf" - which contains the grahs of the results of all the videos.
       Using the command: produce_graphs()
 
    7. The script saves a PDF file named "histogram.pdf" - which contains a graph of running time for calculation xpsnr and psnr for each video.
-      Using the command: produce_histogram_from_dictionary(running_xpsnr_times, running_psnr_times)
-      note: the command running_xpsnr_times, running_psnr_times = produce_database() should be ran first.
+      Using the command: produce_times_graph_from_dictionary(produce_database_for_times_graph)
+
    8. inside the first video folder, the script generates histogram of 500 running times of xpsnr and psnr, and shows how many runnings finished in
       time ranges
       Using the command: produce_time_histogram_for_specific_video()
@@ -55,8 +57,11 @@
 
 Installations and Builds:
 
-1. To build the docker: $RAND_VAL=%{Get-Random} ; docker build . --build-arg DUMMY=$RAND_VAL -t ffmpeg_docker:1_xpsnr
-   Then: docker run
+1. To build the docker:
+   change directory using: cd .\Docker_ffmpeg\ffmpeg\docker-images\4.4\ubuntu2004\
+   and run:
+   $RAND_VAL=%{Get-Random} ; docker build . --build-arg DUMMY=$RAND_VAL -t ffmpeg_docker:1_xpsnr
+   Then run: docker run
 2. do pip install for these libaries:
    matplotlib
    numpy
