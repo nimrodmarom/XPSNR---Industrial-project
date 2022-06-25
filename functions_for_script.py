@@ -3,15 +3,11 @@ import os
 import csv
 from tracemalloc import start
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpl_patches
 import numpy as np
-from PIL import Image
-import time
-import typing
-import pandas as pd
 
 
 def move_videos_to_folders():
+    os.chdir("videos")
     """ Move all videos to its folder. """
     for file in os.listdir():
         # if file is folder continue
@@ -22,7 +18,7 @@ def move_videos_to_folders():
             if not os.path.exists(folder_name):
                 os.mkdir(folder_name)
             os.system("move {0} {1}".format(file, folder_name))
-
+    os.chdir("..")
 
 def count_videos():
     """ Count the videos in the folder. """
