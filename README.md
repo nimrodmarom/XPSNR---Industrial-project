@@ -1,4 +1,5 @@
-# XPSNR - Industrial Project. Nimrod Marom & Ran Braschinsky
+# XPSNR - Industrial Project
+Nimrod Marom & Ran Braschinsky
 
 1. PSNR_calculate.py:
    A script that creates the database of profiling, psnr/xpsnr running times and histograms as explained:
@@ -23,7 +24,7 @@
       Using the command: produce_graphs()
 
    7. The script saves a PDF file named "histogram.pdf" - which contains a graph of running time for calculation xpsnr and psnr for each video.
-      Using the command: produce_times_graph_from_dictionary(produce_database_for_times_graph)
+      Using the command: produce_times_graph_from_dictionary()
 
    8. inside the first video folder, the script generates histogram of 500 running times of xpsnr and psnr, and shows how many runnings finished in
       time ranges

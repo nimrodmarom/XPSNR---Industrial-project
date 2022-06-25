@@ -207,6 +207,8 @@ def handle_plot(video_name: str, VQM_type: str, all_codecs: list, a_x: list, a_y
 def handle_video(video_name: str):
     """ Create for a video_name 2 folders - all_data and results """
     os.chdir(f'{video_name}')
+    print(os.getcwd())
+
     make_folders_for_video()
     original, directory_files = get_videos()
 
@@ -345,7 +347,6 @@ def create_graph(video_name: str, different_codecs: str):
 def produce_database():
     os.chdir("videos")
     for folder_name in os.listdir():
-        print(os.getcwd())
         if not os.path.isdir(folder_name):
             continue
         handle_video(folder_name)
@@ -440,7 +441,8 @@ def produce_time_histogram_for_specific_video():
     os.chdir("..")
 
 
-def produce_times_graph_from_dictionary(running_xpsnr_times, running_psnr_times):
+def produce_times_graph_from_dictionary():
+    running_xpsnr_times, running_psnr_times = produce_database_for_times_graph()
     os.chdir("videos")
     plt.style.use('seaborn-deep')
     psnr_times = []
@@ -587,7 +589,7 @@ def main():
 
     produce_graphs()
 
-    produce_times_graph_from_dictionary(produce_database_for_times_graph)
+    produce_times_graph_from_dictionary()
 
     produce_time_histogram_for_specific_video()
 
