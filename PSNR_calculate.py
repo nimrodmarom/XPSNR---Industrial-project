@@ -346,13 +346,24 @@ def create_graph(video_name: str, different_codecs: str):
 def produce_database():
     os.chdir("videos")
 
+    running_xpsnr_times, running_psnr_times = {}, {}
     for folder_name in os.listdir():
         print(os.getcwd())
         if not os.path.isdir(folder_name):
             continue
-        handle_video(folder_name)
+        running_xpsnr_times[folder_name] = []
+        running_psnr_times[folder_name] = []
+        for i in range(3):
+            handle_video(folder_name)
+            os.chdir(folder_name)
+            running_xpsnr_times[folder_name].append(
+                float(get_time_from_file(folder_name, 'results_xpsnr', 'xpsnr')))
+            running_psnr_times[folder_name].append(
+                float(get_time_from_file(folder_name, 'results_psnr', 'psnr')))
+            os.chdir('..')
 
     os.chdir("..")
+    return running_xpsnr_times, running_psnr_times
 
 
 def produce_graphs():
@@ -414,6 +425,74 @@ def produce_time_histogram_for_specific_video():
                            test_video, all_data_name, result_name)
     produce_time_histogram("xpsnr", current_folder,
                            original, test_video, all_data_name, result_name)
+
+    os.chdir("..")
+
+
+def produce_histogram_from_dictionary(running_xpsnr_times, running_psnr_times):
+    os.chdir("videos")
+    plt.style.use('seaborn-deep')
+    psnr_times = []
+    xpsnr_times = []
+    video_names = running_xpsnr_times
+
+    index = 0
+    for folder_name in os.listdir():  # all videos
+        if not os.path.isdir(folder_name):
+            continue
+        psnr_value = min(running_psnr_times[folder_name])
+        xpsnr_value = min(running_xpsnr_times[folder_name])
+        psnr_times.append(float(psnr_value))
+        xpsnr_times.append(float(xpsnr_value))
+
+    N = len(psnr_times)
+
+    # make tupple out of psnr_times and xpsnr_times until N / 2
+    psnr_times_tuple = tuple(psnr_times[:int(N)])
+    xpsnr_times_tuple = tuple(xpsnr_times[:int(N)])
+
+    ind = np.arange(N)  # the x locations for the groups
+    width = 0.3       # the width of the bars
+
+    fig, ax = plt.subplots()
+    ax.bar(ind, psnr_times_tuple, width, color='purple')
+    # add text for each each one of i bars str(xpsnr_times_tuple[i] / psnr_times_tuple[i]
+    # for i in range(len(psnr_times_tuple)):
+    #     ax.text(i, psnr_times_tuple[i], str(xpsnr_times_tuple[i] / psnr_times_tuple[i]),
+    #             ha='center', va='bottom')
+
+    ax.bar(ind + width, xpsnr_times_tuple, width, color='orange')
+
+    ax.set_ylabel('Time (s)')
+    ax.set_xlabel('# Video')
+    ax.set_title('Calculation time for each video')
+    ax.set_xticks(ind + width / 2)
+    index_list = [i for i in range(1, N + 1)]
+    ax.set_xticklabels(index_list)
+    handles = [mpl_patches.Rectangle((0, 0), 1, 1, fc="white", ec="white",
+                                     lw=0, alpha=0)] * (N + 3)
+
+    video_names_list = []
+    video_names_list.append('Orange: XPSNR')
+    video_names_list.append('Purple: PSNR')
+    video_names_list.append(' ')
+
+    index = 0
+    for key in video_names.keys():
+        index += 1
+        # add to video_names_list the video name and the index
+        # get average of list lst
+        ratio = round(
+            min(running_xpsnr_times[key]) / min(running_psnr_times[key]), 2)
+
+        video_names_list.append(
+            f'{index}: {key} |      xpsnr/psnr time-ratio: {ratio}')
+
+    ax.legend(handles, video_names_list, fontsize='small',
+              fancybox=False, framealpha=0.7, bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0,
+              handlelength=0, handletextpad=0)
+    # save as pdf
+    plt.savefig('histogram.pdf', bbox_inches='tight')
 
     os.chdir("..")
 
@@ -490,13 +569,15 @@ def produce_histogram():
 def main():
     os.chdir("..")
 
-    produce_database()
+    running_xpsnr_times, running_psnr_times = produce_database()
 
     # produce_graphs()
 
     # produce_histogram()
 
-    # produce_time_histogram_for_specific_video()  # TODO: psnr.pdf not working
+    produce_histogram_from_dictionary(running_xpsnr_times, running_psnr_times)
+
+    # produce_time_histogram_for_specific_video()
 
 
 if __name__ == "__main__":
