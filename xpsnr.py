@@ -2,13 +2,13 @@ from wpsnr import *
 
 gamma = 3
 
-video_name = 'Aerial_p30'
-original_video_input = 'Aerial_p30__1920x1080__420__8__30__100.mp4'
-encoded_video_input = 'Aerial_p30__1920x1080__420__8__30__100__x264__hq__medium__natural__1000.mp4'
+video_name = 'BarScene_p30'
+original_video_input = 'BarScene_p30__1920x1080__420__8__30__100.mp4'
+encoded_video_input = 'BarScene_p30__1920x1080__420__8__30__100__x264__hq__medium__natural__4000.mp4'
 
 class XPSNR(WPSNR):
-    def __init__(self, filename, resolution, bitdepth, conv):
-        super().__init__(filename, resolution, bitdepth, conv)
+    def __init__(self, filename, resolution, bitdepth, kernel):
+        super().__init__(filename, resolution, bitdepth, kernel)
 
     def calculate_h_t(self, encoded, prev_encoded):
         if len(prev_encoded) == 0:
@@ -29,27 +29,23 @@ class XPSNR(WPSNR):
                 encoded_video_block = encoded[i: i + N, j: j + N]
                 if len(prev_encoded) != 0:
                     prev_encoded_block = prev_encoded[i: i + N, j: j + N]
-                encoded_conv = signal.convolve2d(
-                    encoded_video_block, encoded_video.conv, boundary='symm', mode='same')
+                encoded_kernel = signal.convolve2d(
+                    encoded_video_block, encoded_video.kernel, boundary='symm', mode='same')
 
                 alpha_k = max((2 ** (encoded_bitdepth - 6)) ** 2,
-                              ((1 / (4 * (N ** 2))) * self.calculate_h_s(encoded_conv) + gamma * self.calculate_h_t(encoded_video_block, prev_encoded_block)) ** 2)
+                              ((1 / (4 * (N ** 2))) * self.calculate_h_s(encoded_kernel) + gamma * self.calculate_h_t(encoded_video_block, prev_encoded_block)) ** 2)
                 weight_k = (alpha_pic / alpha_k) ** beta
                 weight_k_array = np.append(weight_k_array, weight_k)
         return weight_k_array
 
 
 def calculate_xpsnr(original, encoded, resolution, frames, original_bitdepth, encoded_bitdepth):
-    conv = [[-1, -2, -1], [-2, 12, -2], [-1, -2, -1]]
+    kernel = [[-1, -2, -1], [-2, 12, -2], [-1, -2, -1]]
     # make conv as numpy 3x3 array
-    conv = np.array(conv)
+    kernel = np.array(kernel)
 
-    plt.imshow(conv)
-
-    plt.colorbar()
-
-    original_video = XPSNR(original, resolution, original_bitdepth, conv)
-    encoded_video = XPSNR(encoded, resolution, encoded_bitdepth, conv)
+    original_video = XPSNR(original, resolution, original_bitdepth, kernel)
+    encoded_video = XPSNR(encoded, resolution, encoded_bitdepth, kernel)
 
     MAX_VALUE = 2 ** 8 - 1
 

@@ -8,14 +8,14 @@ import os
 import math
 from scipy import signal
 
-video_name = 'Aerial_p30'
-original_video_input = 'Aerial_p30__1920x1080__420__8__30__100.mp4'
-encoded_video_input = 'Aerial_p30__1920x1080__420__8__30__100__x264__hq__medium__natural__1000.mp4'
+video_name = 'BarScene_p30'
+original_video_input = 'BarScene_p30__1920x1080__420__8__30__100.mp4'
+encoded_video_input = 'BarScene_p30__1920x1080__420__8__30__100__x264__hq__medium__natural__4000.mp4'
 
 class WPSNR(PSNR):
-    def __init__(self, filename, resolution, bitdepth, conv):
+    def __init__(self, filename, resolution, bitdepth, kernel):
         super().__init__(filename, resolution, bitdepth)
-        self.conv = conv
+        self.kernel = kernel
 
     def calculate_mse(self, original, encoded, weight_k_array, N,  width, height):
         c = 0
@@ -45,13 +45,13 @@ class WPSNR(PSNR):
         psnr = 10 * np.log10((MAX_VALUE * MAX_VALUE) / mse)
         return psnr, mse
 
-    def calculate_h_s(self, encoded_conv):
-        imx = len(encoded_conv)
-        imy = len(encoded_conv[0])
+    def calculate_h_s(self, encoded_kernel):
+        imx = len(encoded_kernel)
+        imy = len(encoded_kernel[0])
         sum = 0
         for i in range(imx):
             for j in range(imy):
-                sum += abs(encoded_conv[i][j])
+                sum += abs(encoded_kernel[i][j])
         return sum
 
     def calculate_wpsnr_weight_k_array(self, encoded_video, encoded, alpha_pic, beta, N, width, height):
@@ -61,26 +61,22 @@ class WPSNR(PSNR):
         for i in range(0, height, N):
             for j in range(0, width, N):
                 encoded_video_block = encoded[i: i + N, j: j + N]
-                encoded_conv = signal.convolve2d(
-                    encoded_video_block, encoded_video.conv, boundary='symm', mode='same')
+                encoded_kernel = signal.convolve2d(
+                    encoded_video_block, encoded_video.kernel, boundary='symm', mode='same')
                 alpha_k = max((2 ** (encoded_bitdepth - 6)) ** 2,
-                              ((1 / (N ** 2)) * self.calculate_h_s(encoded_conv)) ** 2)
+                              ((1 / (N ** 2)) * self.calculate_h_s(encoded_kernel)) ** 2)
                 weight_k = (alpha_pic / alpha_k) ** beta
                 weight_k_array = np.append(weight_k_array, weight_k)
         return weight_k_array
 
 
 def calculate_wpsnr(original, encoded, resolution, frames, original_bitdepth, encoded_bitdepth):
-    conv = [[-1, -2, -1], [-2, 12, -2], [-1, -2, -1]]
+    kernel = [[-1, -2, -1], [-2, 12, -2], [-1, -2, -1]] # kernel from the WPSNR paper
     # make conv as numpy 3x3 array
-    conv = np.array(conv)
+    kernel = np.array(kernel)
 
-    plt.imshow(conv)
-
-    plt.colorbar()
-
-    original_video = WPSNR(original, resolution, original_bitdepth, conv)
-    encoded_video = WPSNR(encoded, resolution, encoded_bitdepth, conv)
+    original_video = WPSNR(original, resolution, original_bitdepth, kernel)
+    encoded_video = WPSNR(encoded, resolution, encoded_bitdepth, kernel)
 
     MAX_VALUE = 2 ** 8 - 1
 

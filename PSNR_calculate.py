@@ -60,8 +60,7 @@ def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
     if not os.path.exists('profiling'):
         os.mkdir('profiling')
     os.chdir('..')
-    os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\" -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]xpsnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_xpsnr\\{4} 2>&1".format(
-        current_folder, original, file, all_data_name, result_name))
+    os.system(f"docker run -v \"{current_folder}:/data/orig\" -v \"{current_folder}:/data/comp\" -v \"{current_folder}\\all_data_xpsnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{original}\" -i \"/data/comp/{file}\" -threads 1 -lavfi [0:v][1:v]xpsnr=stats_file=\"/data/frame_out/{all_data_name}\" -f null - > results_xpsnr\\{result_name} 2>&1")
 
     if not os.path.exists('results_psnr'):
         os.mkdir('results_psnr')
@@ -69,8 +68,15 @@ def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
     if not os.path.exists('profiling'):
         os.mkdir('profiling')
     os.chdir('..')
-    os.system("docker run -v \"{0}:/data/orig\" -v \"{0}:/data/comp\" -v \"{0}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{1}\"  -i \"/data/comp/{2}\" -threads 1 -lavfi [0:v][1:v]psnr=stats_file=\"/data/frame_out/{3}\" -f null - > results_psnr\\{4} 2>&1".format(
-        current_folder, original, file, all_data_name, result_name))
+    os.system(f"docker run -v \"{current_folder}:/data/orig\" -v \"{current_folder}:/data/comp\" -v \"{current_folder}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{original}\"  -i \"/data/comp/{file}\" -threads 1 -lavfi [0:v][1:v]psnr=stats_file=\"/data/frame_out/{all_data_name}\" -f null - > results_psnr\\{result_name} 2>&1")
+
+    if not os.path.exists('results_vmaf'):
+        os.mkdir('results_vmaf')
+    os.chdir('results_vmaf')
+    if not os.path.exists('profiling'):
+        os.mkdir('profiling')
+    os.chdir('..')
+    os.system(f"docker run  -v \"{current_folder}:/data/comp\" -v \"{current_folder}:/data/orig\" -v \"{current_folder}\\all_data_vmaf:/data/frame_out\" ffmpeg_docker:1_xpsnr -i \"/data/comp/{file}\" -i \"/data/orig/{original}\" -lavfi libvmaf=\"model_path=/opt/ffmpeg/share/model/vmaf_v0.6.1.pkl\":log_path=vmaf_logfile.txt -f null - > results_vmaf\\{result_name} 2>&1")
 
 
 def handle_profiling(video_name):
@@ -434,9 +440,9 @@ def produce_time_histogram_for_specific_video():
     all_data_name = 'temp_data.txt'
     result_name = 'temp_result.txt'
     produce_time_histogram("psnr", current_folder, original,
-                           test_video, all_data_name, result_name)
+                           test_video, all_data_name, result_name, [5, 10, 15, 20])
     produce_time_histogram("xpsnr", current_folder,
-                           original, test_video, all_data_name, result_name)
+                           original, test_video, all_data_name, result_name, [5, 10, 15, 20])
 
     os.chdir("..")
 
@@ -585,11 +591,11 @@ def main():
 
     # move_videos_to_folders()
 
-    produce_database()
+    # produce_database()
 
-    produce_graphs()
+    # produce_graphs()
 
-    produce_times_graph_from_dictionary()
+    # produce_times_graph_from_dictionary()
 
     produce_time_histogram_for_specific_video()
 

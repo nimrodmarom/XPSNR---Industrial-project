@@ -56,13 +56,16 @@ Nimrod Marom & Ran Braschinsky
 5. Docker\_\_ffmpeg\ffmpeg:
    FFMPEG Docker Submodule (from https://github.com/jrottenberg/ffmpeg)
 
+
 Installations and Builds:
 
 1. To build the docker:
    change directory using: cd .\Docker_ffmpeg\ffmpeg\docker-images\4.4\ubuntu2004\
    and run:
    $RAND_VAL=%{Get-Random} ; docker build . --build-arg DUMMY=$RAND_VAL -t ffmpeg_docker:1_xpsnr
+
    Then run: docker run
+   
 2. do pip install for these libaries:
    matplotlib
    numpy
