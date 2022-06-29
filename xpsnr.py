@@ -29,11 +29,11 @@ class XPSNR(WPSNR):
                 encoded_video_block = encoded[i: i + N, j: j + N]
                 if len(prev_encoded) != 0:
                     prev_encoded_block = prev_encoded[i: i + N, j: j + N]
-                encoded_kernel = signal.convolve2d(
+                encoded_conv = signal.convolve2d(
                     encoded_video_block, encoded_video.kernel, boundary='symm', mode='same')
 
                 alpha_k = max((2 ** (encoded_bitdepth - 6)) ** 2,
-                              ((1 / (4 * (N ** 2))) * self.calculate_h_s(encoded_kernel) + gamma * self.calculate_h_t(encoded_video_block, prev_encoded_block)) ** 2)
+                              ((1 / (4 * (N ** 2))) * self.calculate_h_s(encoded_conv) + gamma * self.calculate_h_t(encoded_video_block, prev_encoded_block)) ** 2)
                 weight_k = (alpha_pic / alpha_k) ** beta
                 weight_k_array = np.append(weight_k_array, weight_k)
         return weight_k_array
@@ -77,21 +77,11 @@ def calculate_xpsnr(original, encoded, resolution, frames, original_bitdepth, en
         xpsnr_y = xpsnr_y.round(2)
         mse_y_array.append(mse_y)
 
-        # N = round(128 * math.sqrt(encoded_video.u_width *
-        #           encoded_video.u_height / (3840*2160)))
-        # weight_k_array = calculate_wpsnr_weight_k_array(
-        #    encoded_video, encoded_u, alpha_pic, beta, N, encoded_video.u_width, encoded_video.u_height)
-
         xpsnr_u, mse_u = original_video.wpsnr_channel(
             original_u, encoded_u, MAX_VALUE, weight_k_array, N, encoded_video.u_width, encoded_video.u_height)
         mse_u = mse_u.round(2)
         xpsnr_u = xpsnr_u.round(2)
         mse_u_array.append(mse_u)
-
-        # N = round(128 * math.sqrt(encoded_video.v_width *
-        #          encoded_video.v_height / (3840*2160)))
-        # weight_k_array = calculate_wpsnr_weight_k_array(
-        #    encoded_video, encoded_v, alpha_pic, beta, N, encoded_video.v_width, encoded_video.v_height)
 
         xpsnr_v, mse_v = original_video.wpsnr_channel(
             original_v, encoded_v, MAX_VALUE, weight_k_array, N, encoded_video.v_width, encoded_video.v_height)
@@ -162,9 +152,9 @@ if __name__ == "__main__":
 
     os.chdir('xpsnr_values')
     with open(f'{encoded_video.split(".")[0]}_python_xpsnr_out.txt', 'a') as f:
-        f.write(f'Y-PSNR: {xpsnr_y:.4f}dB\n')
-        f.write(f'U-PSNR: {xpnsr_u:.4f}dB\n')
-        f.write(f'V-PSNR: {xpsnr_v:.4f}dB\n')
-        f.write(f'YUV-PSNR: {xpsnr_yuv:.4f}dB\n')
+        f.write(f'Y-XPSNR: {xpsnr_y:.4f}dB\n')
+        f.write(f'U-XPSNR: {xpnsr_u:.4f}dB\n')
+        f.write(f'V-XPSNR: {xpsnr_v:.4f}dB\n')
+        f.write(f'YUV-XPSNR: {xpsnr_yuv:.4f}dB\n')
     os.chdir('..')
     delete_converted_videos(original_video, encoded_video)
