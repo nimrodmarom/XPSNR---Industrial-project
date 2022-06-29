@@ -5,6 +5,13 @@ Note: the code is running on windows only.
 
 First step: in order to clone this repo, use the command: git clone --recursive-submodules 
 
+Project produced data:
+
+The results we got from running the script, with the videos we run: https://technionmail-my.sharepoint.com/personal/nimrod_marom_campus_technion_ac_il/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fnimrod%5Fmarom%5Fcampus%5Ftechnion%5Fac%5Fil%2FDocuments%2Fvideos
+
+
+Project files:
+
 1. PSNR_calculate.py:
    A script that creates the database of profiling, psnr/xpsnr running times and histograms as explained:
 
@@ -68,8 +75,6 @@ Installations and Builds:
    and run:
    $RAND_VAL=%{Get-Random} ; docker build . --build-arg DUMMY=$RAND_VAL -t ffmpeg_docker:1_xpsnr
 
-   Then run: docker run
-   
 2. do pip install for these libaries:
    matplotlib
    numpy
