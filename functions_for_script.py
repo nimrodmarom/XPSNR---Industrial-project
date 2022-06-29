@@ -9,6 +9,7 @@ from PIL import Image
 import time
 import typing
 from unittest import result
+import shutil
 
 
 def move_videos_to_folders():
@@ -351,7 +352,7 @@ def profiling_precentage_xpsnr_functions(video_name):
     os.chdir('..\\..')
 
 
-def calculate_do_psnr_xpsnr(VQM_type: str, result_name: str) -> int:
+def calculate_do_psnr_xpsnr_vmaf(VQM_type: str, result_name: str) -> int:
     with open(result_name, 'r') as result_file:
         # check if lines starts with '******'
         results_lines = result_file.readlines()
@@ -379,7 +380,7 @@ def produce_time_histogram(VQM_type: str, current_folder: str, original: str, te
     for i in range(500):
         os.system(
             f"docker run -v \"{current_folder}:/data/orig\" -v \"{current_folder}:/data/comp\" -v \"{current_folder}\\all_data_psnr:/data/frame_out\" ffmpeg_docker:1_xpsnr -r 30 -i \"/data/orig/{original}\"  -i \"/data/comp/{test_video}\" -threads 1 -lavfi [0:v][1:v]{VQM_type}=stats_file=\"/data/frame_out/{all_data_name}\" -f null - > {result_name} 2>&1")
-        time_sum = calculate_do_psnr_xpsnr(f'{VQM_type}', result_name)
+        time_sum = calculate_do_psnr_xpsnr_vmaf(f'{VQM_type}', result_name)
         running_times.append(time_sum)
 
     plt.figure()

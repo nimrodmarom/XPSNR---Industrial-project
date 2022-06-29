@@ -106,21 +106,11 @@ def calculate_wpsnr(original, encoded, resolution, frames, original_bitdepth, en
         wpsnr_y = wpsnr_y.round(2)
         mse_y_array.append(mse_y)
 
-        # N = round(128 * math.sqrt(encoded_video.u_width *
-        #           encoded_video.u_height / (3840*2160)))
-        # weight_k_array = calculate_wpsnr_weight_k_array(
-        #    encoded_video, encoded_u, alpha_pic, beta, N, encoded_video.u_width, encoded_video.u_height)
-
         wpsnr_u, mse_u = original_video.wpsnr_channel(
             original_u, encoded_u, MAX_VALUE, weight_k_array, N, encoded_video.u_width, encoded_video.u_height)
         mse_u = mse_u.round(2)
         wpsnr_u = wpsnr_u.round(2)
         mse_u_array.append(mse_u)
-
-        # N = round(128 * math.sqrt(encoded_video.v_width *
-        #          encoded_video.v_height / (3840*2160)))
-        # weight_k_array = calculate_wpsnr_weight_k_array(
-        #    encoded_video, encoded_v, alpha_pic, beta, N, encoded_video.v_width, encoded_video.v_height)
 
         wpsnr_v, mse_v = original_video.wpsnr_channel(
             original_v, encoded_v, MAX_VALUE, weight_k_array, N, encoded_video.v_width, encoded_video.v_height)

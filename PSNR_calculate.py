@@ -47,7 +47,7 @@ def calcualte_full_psnr_xpsnr_time(file: str, VQM_type: str, result_name: str, p
         if os.stat(f'full_{VQM_type}_{video_name}_profiling.csv').st_size == 0:
             writer.writerow(
                 ['file name', f'calculation time for {VQM_type} (secs)'])
-        calculation_time = calculate_do_psnr_xpsnr(
+        calculation_time = calculate_do_psnr_xpsnr_vmaf(
             VQM_type=VQM_type, result_name=profiling_file)
         writer.writerow([file, calculation_time])
     os.chdir('..\\..')
@@ -82,9 +82,19 @@ def call_PSNR_XPSNR(current_folder, original, file, all_data_name, result_name):
 def handle_profiling(video_name):
     calculate_full_profiling_average('xpsnr', video_name)
     calculate_full_profiling_average('psnr', video_name)
+    calculate_full_profiling_average('vmaf', video_name)
     profiling_functions('psnr', video_name)
     profiling_functions('xpsnr', video_name)
     profiling_precentage_xpsnr_functions(video_name)
+
+def calculate_vmaf_full_profiling_times(result_name : str, file: str, video_name: str):
+    profiling_file = 'profiling_' + result_name.split('results_')[1]
+    original = str(os.getcwd()) + f'\\results_vmaf\\{result_name}'
+    dist = str(os.getcwd()) + f'\\results_vmaf\\profiling\\{profiling_file}'
+    # original = rf'{original}'
+    # dist = rf'{dist}'
+    shutil.copyfile(original, dist)
+    calcualte_full_psnr_xpsnr_time(file=file ,VQM_type='vmaf', result_name= result_name, profiling_file=profiling_file, video_name=video_name)
 
 
 def calculate_XPSNR_PSNR_files(VQM_type: str, result_name: str, all_data_name: str, file: str, video_name: str):
@@ -157,6 +167,7 @@ def calculate_XPSNR_PSNR_files(VQM_type: str, result_name: str, all_data_name: s
     os.chdir('..')
     calcualte_full_psnr_xpsnr_time(
         file, VQM_type, result_name, profiling_file, video_name)
+    
     os.remove(f'results_{VQM_type}\\{result_name}')
 
 
@@ -232,6 +243,7 @@ def handle_video(video_name: str):
                                    all_data_name=all_data_name, file=file, video_name=video_name)
         calculate_XPSNR_PSNR_files("xpsnr", result_name=result_name,
                                    all_data_name=all_data_name, file=file, video_name=video_name)
+        calculate_vmaf_full_profiling_times(result_name=result_name, file=file, video_name=video_name)
     handle_profiling(video_name)
     os.chdir("..")
 
@@ -364,12 +376,13 @@ def produce_database():
 def produce_database_for_times_graph():
     os.chdir("videos")
 
-    running_xpsnr_times, running_psnr_times = {}, {}
+    running_xpsnr_times, running_psnr_times, running_vmaf_times = {}, {}, {}
     for folder_name in os.listdir():
         if not os.path.isdir(folder_name):
             continue
         running_xpsnr_times[folder_name] = []
         running_psnr_times[folder_name] = []
+        running_vmaf_times[folder_name] = []
         for i in range(3):
             handle_video(folder_name)
             os.chdir(folder_name)
@@ -377,10 +390,12 @@ def produce_database_for_times_graph():
                 float(get_time_from_file(folder_name, 'results_xpsnr', 'xpsnr')))
             running_psnr_times[folder_name].append(
                 float(get_time_from_file(folder_name, 'results_psnr', 'psnr')))
+            running_vmaf_times[folder_name].append(
+                float(get_time_from_file(folder_name, 'results_vmaf', 'vmaf')))
             os.chdir('..')
 
     os.chdir("..")
-    return running_xpsnr_times, running_psnr_times
+    return running_vmaf_times, running_xpsnr_times, running_psnr_times
 
 
 def produce_graphs():
@@ -450,13 +465,14 @@ def produce_time_histogram_for_specific_video():
     os.chdir("..")
 
 
-def produce_times_graph_from_dictionary():
+def produce_times_graph_by_codecs():
     print('Proccesing produce_times_graph_from_dictionary()')
-    running_xpsnr_times, running_psnr_times = produce_database_for_times_graph()
+    running_vmaf_times, running_xpsnr_times, running_psnr_times = produce_database_for_times_graph()
     os.chdir("videos")
     plt.style.use('seaborn-deep')
     psnr_times = []
     xpsnr_times = []
+    vmaf_times = []
     video_names = running_xpsnr_times
 
     index = 0
@@ -465,17 +481,20 @@ def produce_times_graph_from_dictionary():
             continue
         psnr_value = min(running_psnr_times[folder_name])
         xpsnr_value = min(running_xpsnr_times[folder_name])
+        vmaf_value = min(running_vmaf_times[folder_name])
         psnr_times.append(float(psnr_value))
         xpsnr_times.append(float(xpsnr_value))
+        vmaf_times.append(float(vmaf_value))
 
     N = len(psnr_times)
 
     # make tupple out of psnr_times and xpsnr_times until N / 2
     psnr_times_tuple = tuple(psnr_times[:int(N)])
     xpsnr_times_tuple = tuple(xpsnr_times[:int(N)])
+    vmaf_times_tuple = tuple(vmaf_times[:int(N)])
 
     ind = np.arange(N)  # the x locations for the groups
-    width = 0.3       # the width of the bars
+    width = 0.1       # the width of the bars
 
     fig, ax = plt.subplots()
     ax.bar(ind, psnr_times_tuple, width, color='purple')
@@ -485,6 +504,7 @@ def produce_times_graph_from_dictionary():
     #             ha='center', va='bottom')
 
     ax.bar(ind + width, xpsnr_times_tuple, width, color='orange')
+    ax.bar(ind + 2 * width, vmaf_times_tuple, width, color='green')
 
     ax.set_ylabel('Time (s)')
     ax.set_xlabel('# Video')
@@ -498,6 +518,7 @@ def produce_times_graph_from_dictionary():
     video_names_list = []
     video_names_list.append('Orange: XPSNR')
     video_names_list.append('Purple: PSNR')
+    video_names_list.append('Green: VMAF')
     video_names_list.append(' ')
 
     index = 0
@@ -515,7 +536,7 @@ def produce_times_graph_from_dictionary():
               fancybox=False, framealpha=0.7, bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0,
               handlelength=0, handletextpad=0)
     # save as pdf
-    plt.savefig('xpsnr_psnr_running_times.pdf', bbox_inches='tight')
+    plt.savefig('xpsnr_psnr_vmaf_running_times.pdf', bbox_inches='tight')
 
     os.chdir("..")
 
@@ -524,13 +545,13 @@ def main():
 
     os.chdir("..")
 
-    # move_videos_to_folders()
+    move_videos_to_folders()
 
     produce_database()
 
     produce_graphs()
 
-    produce_times_graph_from_dictionary()
+    produce_times_graph_by_codecs()
 
     produce_time_histogram_for_specific_video()
 
