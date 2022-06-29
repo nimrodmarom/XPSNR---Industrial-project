@@ -1,5 +1,5 @@
 # XPSNR - Industrial Project
-Nimrod Marom & Ran Braschinsky
+# Nimrod Marom & Ran Braschinsky
 
 1. PSNR_calculate.py:
    A script that creates the database of profiling, psnr/xpsnr running times and histograms as explained:
